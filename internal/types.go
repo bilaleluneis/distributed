@@ -5,27 +5,33 @@
 package internal
 
 import (
+	"bytes"
 	"errors"
 )
 
 type RpcNode struct{}
 
-var nodes []int
+var nodes []bytes.Buffer
 
-func (RpcNode) Insert(val int, _ *int) error {
+// Insert the second param here _ *struct{} is equal to passing *void (nothing)
+// and is meant to satisfy the RPC service signature requirements.
+func (RpcNode) Insert(val []byte, _ *struct{}) error {
 
 	if len(nodes) == 0 {
-		nodes = make([]int, 5, 5)
+		nodes = make([]bytes.Buffer, 5, 5)
 	}
-	nodes = append(nodes, val)
+
+	data := bytes.Buffer{}
+	data.Write(val)
+	nodes = append(nodes, data)
 	return nil
 }
 
-func (RpcNode) Retrieve(remove bool, result *int) error {
+func (RpcNode) Retrieve(remove bool, result *[]byte) error {
 	if len(nodes) == 0 {
 		return errors.New("nothing to pop")
 	}
-	*result = nodes[len(nodes)-1]
+	*result = nodes[len(nodes)-1].Bytes()
 	if remove {
 		nodes = nodes[:len(nodes)-1]
 	}

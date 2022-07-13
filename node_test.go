@@ -5,20 +5,28 @@
 package distributed
 
 import (
+	"log"
 	"testing"
 )
 
 func TestTcpRpc(t *testing.T) {
 
 	go func() {
-		_ = AsServer(8080)
+		err := AsServer(8080)
+		if err != nil {
+			log.Fatal("test server startup error", err)
+		}
 	}()
 
-	_ = AsClient("localhost", 8080)
+	err := AsClient("localhost", 8080)
+	if err != nil {
+		log.Print("error aquiring client instance", err)
+		t.FailNow()
+	}
 
 	node := Node{}
 
-	err := node.Push(1)
+	err = node.Push(1)
 
 	if err != nil {
 		t.Errorf("node.push() call failed")
