@@ -6,27 +6,15 @@ package distributed
 
 import (
 	"log"
+	"os"
 	"testing"
 )
 
 func TestTcpRpc(t *testing.T) {
 
-	go func() {
-		err := AsServer(8080)
-		if err != nil {
-			log.Fatal("test server startup error", err)
-		}
-	}()
+	node := Node[int]{}
 
-	err := AsClient("localhost", 8080)
-	if err != nil {
-		log.Print("error aquiring client instance", err)
-		t.FailNow()
-	}
-
-	node := Node{}
-
-	err = node.Push(1)
+	err := node.Push(1)
 
 	if err != nil {
 		t.Errorf("node.push() call failed")
@@ -43,4 +31,23 @@ func TestTcpRpc(t *testing.T) {
 		t.Errorf("node.pop() result is wrong")
 	}
 
+}
+
+// allow single initialization of client and server instance for all tests
+func TestMain(m *testing.M) {
+
+	go func() {
+		err := AsServer(8080)
+		if err != nil {
+			log.Fatal("test server startup error", err)
+		}
+	}()
+
+	err := AsClient("localhost", 8080)
+	if err != nil {
+		log.Fatal("error aquiring client instance", err)
+	}
+
+	exitVal := m.Run()
+	os.Exit(exitVal)
 }

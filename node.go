@@ -10,9 +10,9 @@ import (
 	"errors"
 )
 
-type Node struct{}
+type Node[T any] struct{}
 
-func (n Node) Push(val int) error {
+func (n Node[T]) Push(val T) error {
 	buffer := bytes.NewBuffer([]byte{})
 	err := gob.NewEncoder(buffer).Encode(val)
 	if err != nil {
@@ -22,11 +22,11 @@ func (n Node) Push(val int) error {
 	return err
 }
 
-func (n Node) Pop(remove bool) (int, error) {
+func (n Node[T]) Pop(remove bool) (T, error) {
 	var data []byte
 	err := client.Call("RpcNode.Retrieve", remove, &data)
 
-	var result int
+	var result T
 	if err != nil {
 		return result, errors.New("call to server failed")
 	}
