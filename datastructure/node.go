@@ -12,10 +12,11 @@ import (
 	"errors"
 )
 
+// Node TODO: refactor and introduce Previous and remove IsRoot
 type Node[T any] struct {
-	IsRoot bool
-	Data   T
-	Next   common.Location
+	Data T
+	Prev common.Location
+	Next common.Location
 }
 
 func Insert[T any](node Node[T], loc common.Location) (common.UUID, error) {
@@ -25,6 +26,7 @@ func Insert[T any](node Node[T], loc common.Location) (common.UUID, error) {
 	if err != nil {
 		return uuid, err
 	}
+	// FIXME: err in if statement shadows above
 	if client, err := internal.GetTcpClient(loc); err == nil {
 		err = client.Call(internal.INSERT, buffer.Bytes(), &uuid)
 	}
@@ -47,4 +49,21 @@ func Retrieve[T any](param common.SearchParams) (Node[T], error) {
 	return node, err
 }
 
-// need to implement update, link and unlink functions
+func Update[T any](at common.Location, newValue Node[T]) error {
+	node := newValue
+	buffer := bytes.NewBuffer([]byte{})
+	err := gob.NewEncoder(buffer).Encode(node)
+	if err != nil {
+		return err
+	}
+	client, err := internal.GetTcpClient(at)
+	if err != nil {
+		return err
+	}
+	updatedNode := internal.UpdatedNode{
+		Uuid: at.Uuid,
+		Node: buffer.Bytes(),
+	}
+	err = client.Call(internal.UPDATE, updatedNode, nil)
+	return err
+}

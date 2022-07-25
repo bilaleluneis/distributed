@@ -15,8 +15,7 @@ import (
 func TestTcpRpc(t *testing.T) {
 
 	node := Node[int]{
-		IsRoot: true,
-		Data:   1,
+		Data: 1,
 	}
 
 	location := common.Location{
@@ -41,6 +40,16 @@ func TestTcpRpc(t *testing.T) {
 		t.Fail()
 	}
 
+	//test update op
+	returnedNode.Data = 2
+	err = Update[int](location, returnedNode)
+	if err != nil {
+		t.Fail()
+	}
+	updatedNode, err := Retrieve[int](params)
+	if err != nil || updatedNode.Data != 2 {
+		t.Fail()
+	}
 }
 
 // allow single initialization of client and server instance for all tests
