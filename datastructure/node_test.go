@@ -20,7 +20,7 @@ func TestTcpRpc(t *testing.T) {
 
 	location := common.Location{
 		HostName: "localhost",
-		Ip:       8080,
+		Port:     8080,
 	}
 
 	// test insert op

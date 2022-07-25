@@ -28,7 +28,7 @@ func InitServer(port int) error {
 }
 
 func GetTcpClient(distn common.Location) (*rpc.Client, error) {
-	address := fmt.Sprintf("%s:%d", distn.HostName, distn.Ip)
+	address := fmt.Sprintf("%s:%d", distn.HostName, distn.Port)
 	client, err := rpc.Dial("tcp", address)
 	if err != nil {
 		log.Print("client connection failed")

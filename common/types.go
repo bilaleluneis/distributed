@@ -8,7 +8,7 @@ type UUID = string
 
 type Location struct {
 	HostName string
-	Ip       int
+	Port     int
 	Uuid     UUID
 }
 
