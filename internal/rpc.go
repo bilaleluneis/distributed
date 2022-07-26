@@ -24,19 +24,21 @@ var nodes = make(map[common.UUID]*bytes.Buffer)
 
 func (RpcNode) Insert(node []byte, uuid *common.UUID) error {
 	_data := bytes.NewBuffer(node)
-	//TODO: check if uuid exist then gen another one
 	*uuid = common.GenUUID()
+	for _, ok := nodes[*uuid]; ok; {
+		*uuid = common.GenUUID()
+	}
 	nodes[*uuid] = _data
 	return nil
 }
 
-// Retrieve TODO: refactor to account for when Uuid is not provided or not present
-// TODO: define error constants in common package
 func (RpcNode) Retrieve(params common.SearchParams, result *[]byte) error {
-	if len(nodes) == 0 {
+	if len(nodes) == 0 || params.Address.Uuid == "" {
 		return errors.New("nothing to pop")
 	}
-	//TODO: if Uuid is provided check if exist in nodes else return error
+	if _, ok := nodes[params.Address.Uuid]; !ok {
+		return errors.New("uuid does not exist")
+	}
 	*result = nodes[params.Address.Uuid].Bytes()
 	if params.Remove {
 		delete(nodes, params.Address.Uuid)
@@ -52,6 +54,9 @@ type UpdatedNode struct {
 
 func (RpcNode) Update(data UpdatedNode, _ *struct{}) error {
 	updatedNode := bytes.NewBuffer(data.Node)
+	if _, ok := nodes[data.Uuid]; !ok {
+		return errors.New("uuid does not exist")
+	}
 	nodes[data.Uuid] = updatedNode
 	return nil
 }

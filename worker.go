@@ -9,7 +9,6 @@ import (
 	"log"
 )
 
-// InitWorker TODO: need to refactor to allow open port 0.0.0.0
 func InitWorker(port int) {
 	err := internal.InitServer(port)
 	if err != nil {

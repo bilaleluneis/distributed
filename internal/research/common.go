@@ -54,10 +54,6 @@ func retrieveData[T any]() (T, error) {
 // used with GOB/RPC based conversion Tests
 var network bytes.Buffer
 
-func registerGobType[T any]() {
-	gob.Register(new(T))
-}
-
 func toNetwork[T any](data T) error {
 	err := gob.NewEncoder(&network).Encode(data)
 	return err

@@ -12,7 +12,7 @@ func InitServer(port int) error {
 	if err := rpc.Register(&RpcNode{}); err != nil {
 		return err
 	}
-	l, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
+	l, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", port))
 	if err != nil {
 		log.Print("server failed to initialize")
 		return err

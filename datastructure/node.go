@@ -10,9 +10,9 @@ import (
 	"distributed/internal"
 	"encoding/gob"
 	"errors"
+	"net/rpc"
 )
 
-// Node TODO: refactor and introduce Previous and remove IsRoot
 type Node[T any] struct {
 	Data T
 	Prev common.Location
@@ -26,8 +26,8 @@ func Insert[T any](node Node[T], loc common.Location) (common.UUID, error) {
 	if err != nil {
 		return uuid, err
 	}
-	// FIXME: err in if statement shadows above
-	if client, err := internal.GetTcpClient(loc); err == nil {
+	var client *rpc.Client
+	if client, err = internal.GetTcpClient(loc); err == nil {
 		err = client.Call(internal.INSERT, buffer.Bytes(), &uuid)
 	}
 	return uuid, err

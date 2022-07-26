@@ -12,7 +12,7 @@ import (
 	"testing"
 )
 
-func TestTcpRpc(t *testing.T) {
+func TestNode(t *testing.T) {
 
 	node := Node[int]{
 		Data: 1,
