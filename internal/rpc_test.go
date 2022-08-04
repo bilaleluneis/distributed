@@ -2,40 +2,59 @@ package internal
 
 import (
 	"distributed/common"
-	"fmt"
 	"log"
-	"net/rpc"
 	"os"
-	"strings"
 	"testing"
 )
 
 func TestRpcNode(t *testing.T) {
-	var uuid common.UUID
 
-	// insert call test
-	err := client.Call(INSERT, []byte{}, &uuid)
-	if err != nil || uuid == "" {
-		t.Fail()
+	worker := common.Worker{
+		Host: "localhost",
+		Port: 8080,
 	}
 
-	//retrieve call with remove
-	location := common.Location{Uuid: uuid}
-	params := common.SearchParams{Address: location, Remove: true}
-	var result []byte
-	err = client.Call(RETRIEVE, params, &result)
+	var grpId common.GRPID
+	err := worker.Invoke(NEW, common.NONE{}, &grpId)
+
+	node := RpcNode{
+		Data:  []byte("testData"),
+		GrpID: grpId,
+		Uuid:  common.GenUUID(),
+	}
+
+	// Test Insert
+	err = worker.Invoke(INSERT, node, &common.NONE{})
 	if err != nil {
 		t.Fail()
 	}
 
-	// retrieve call : check if entry was removed
-	err = client.Call(RETRIEVE, params, &result)
-	if !strings.Contains(fmt.Sprint(err), "nothing to pop") {
+	nodeInfo := RpcNode{
+		GrpID: grpId,
+		Uuid:  node.Uuid,
+	}
+	var result []RpcNode
+
+	// Test Retrieve
+	err = worker.Invoke(RETRIEVE, nodeInfo, &result)
+	if err != nil {
 		t.Fail()
 	}
-}
+	if len(result) == 0 {
+		t.Fail()
+	}
 
-var client *rpc.Client
+	// Test Delete
+	err = worker.Invoke(DELETE, nodeInfo, &common.NONE{})
+	if err != nil {
+		t.Fail()
+	}
+	err = worker.Invoke(RETRIEVE, nodeInfo, &result)
+	if err == nil || err == common.NoResultsErr {
+		t.Fail()
+	}
+
+}
 
 func TestMain(m *testing.M) {
 
@@ -45,12 +64,6 @@ func TestMain(m *testing.M) {
 			log.Fatal("test server startup error", err)
 		}
 	}()
-
-	var err error
-	client, err = rpc.Dial("tcp", "localhost:8080")
-	if err != nil {
-		log.Fatal("test client init failed", err)
-	}
 
 	os.Exit(m.Run())
 

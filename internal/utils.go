@@ -1,7 +1,6 @@
 package internal
 
 import (
-	"distributed/common"
 	"fmt"
 	"log"
 	"net"
@@ -9,7 +8,7 @@ import (
 )
 
 func InitServer(port int) error {
-	if err := rpc.Register(&RpcNode{}); err != nil {
+	if err := rpc.Register(&RpcNodeService{}); err != nil {
 		return err
 	}
 	l, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", port))
@@ -25,14 +24,4 @@ func InitServer(port int) error {
 		}
 		go rpc.ServeConn(conn)
 	}
-}
-
-func GetTcpClient(distn common.Location) (*rpc.Client, error) {
-	address := fmt.Sprintf("%s:%d", distn.HostName, distn.Port)
-	client, err := rpc.Dial("tcp", address)
-	if err != nil {
-		log.Print("client connection failed")
-		return nil, err
-	}
-	return client, nil
 }

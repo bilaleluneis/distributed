@@ -13,41 +13,11 @@ import (
 )
 
 func TestNode(t *testing.T) {
-
-	node := Node[int]{
-		Data: 1,
-	}
-
-	location := common.Location{
-		HostName: "localhost",
-		Port:     8080,
-	}
-
-	// test insert op
-	uuid, err := Insert(node, location)
-	if err != nil || uuid == "" {
-		t.Fail()
-	}
-
-	// test retrieve op
-	location.Uuid = uuid
-	params := common.SearchParams{
-		Remove:  false,
-		Address: location,
-	}
-	returnedNode, err := Retrieve[int](params)
-	if err != nil || returnedNode.Data != 1 {
-		t.Fail()
-	}
-
-	//test update op
-	returnedNode.Data = 2
-	err = Update[int](location, returnedNode)
+	grpId, uuid, err := New[int](1, "")
 	if err != nil {
 		t.Fail()
 	}
-	updatedNode, err := Retrieve[int](params)
-	if err != nil || updatedNode.Data != 2 {
+	if grpId == "" || uuid == "" {
 		t.Fail()
 	}
 }
@@ -62,6 +32,11 @@ func TestMain(m *testing.M) {
 		}
 	}()
 
-	exitVal := m.Run()
-	os.Exit(exitVal)
+	workers := []common.Worker{{
+		Host: "localhost",
+		Port: 8080,
+	}}
+	common.Init(workers)
+
+	os.Exit(m.Run())
 }

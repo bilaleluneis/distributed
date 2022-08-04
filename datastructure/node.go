@@ -9,61 +9,83 @@ import (
 	"distributed/common"
 	"distributed/internal"
 	"encoding/gob"
-	"errors"
-	"net/rpc"
 )
 
 type Node[T any] struct {
-	Data T
-	Prev common.Location
-	Next common.Location
+	Data   T
+	GrpId  common.GRPID
+	Uuid   common.UUID
+	Parent common.UUID
+	Child  common.UUID
 }
 
-func Insert[T any](node Node[T], loc common.Location) (common.UUID, error) {
-	buffer := bytes.NewBuffer([]byte{})
-	err := gob.NewEncoder(buffer).Encode(node)
+func New[T any](data T, inGrp common.GRPID) (common.GRPID, common.UUID, error) {
+	grpId := inGrp
 	var uuid common.UUID
-	if err != nil {
-		return uuid, err
-	}
-	var client *rpc.Client
-	if client, err = internal.GetTcpClient(loc); err == nil {
-		err = client.Call(internal.INSERT, buffer.Bytes(), &uuid)
-	}
-	return uuid, err
-}
+	var err error
 
-func Retrieve[T any](param common.SearchParams) (Node[T], error) {
-	var node Node[T]
-	client, err := internal.GetTcpClient(param.Address)
-	if err != nil {
-		return node, errors.New("call to server failed")
+	workers := common.Get()
+	if len(workers) == 0 {
+		return grpId, uuid, common.NoWorkerAvailErr
 	}
-	var result []byte
-	err = client.Call(internal.RETRIEVE, param, &result)
-	if err != nil {
-		return node, errors.New("call to RpcNode.Retrieve failed")
+	if grpId == "" {
+		grpId, err = genGroupID(workers)
+		if err != nil {
+			return grpId, uuid, err
+		}
 	}
-	buffer := bytes.NewBuffer(result)
-	err = gob.NewDecoder(buffer).Decode(&node)
-	return node, err
-}
 
-func Update[T any](at common.Location, newValue Node[T]) error {
-	node := newValue
+	uuid, err = genUUID(workers, grpId)
+	if err != nil {
+		return grpId, uuid, err
+	}
+
+	// persist node
 	buffer := bytes.NewBuffer([]byte{})
-	err := gob.NewEncoder(buffer).Encode(node)
+	err = gob.NewEncoder(buffer).Encode(data)
 	if err != nil {
-		return err
+		return grpId, uuid, err
 	}
-	client, err := internal.GetTcpClient(at)
-	if err != nil {
-		return err
+	node := internal.RpcNode{
+		GrpID: grpId,
+		Uuid:  uuid,
+		Data:  buffer.Bytes(),
 	}
-	updatedNode := internal.UpdatedNode{
-		Uuid: at.Uuid,
-		Node: buffer.Bytes(),
+	err = workers[0].Invoke(internal.INSERT, node, &common.NONE{})
+
+	return grpId, uuid, err
+}
+
+func genGroupID(workers []common.Worker) (common.GRPID, error) {
+genID:
+	grpId := common.GenUUID()
+	var err error
+	for _, worker := range workers {
+		var exist bool
+		err = worker.Invoke(internal.GRPIDEXIST, grpId, &exist)
+		if err != nil {
+			return "", err
+		}
+		if exist {
+			goto genID
+		}
 	}
-	err = client.Call(internal.UPDATE, updatedNode, nil)
-	return err
+	return grpId, err
+}
+
+func genUUID(workers []common.Worker, forGrp common.GRPID) (common.UUID, error) {
+genID:
+	uuid := common.GenUUID()
+	node := internal.RpcNode{
+		GrpID: forGrp,
+		Uuid:  uuid,
+	}
+	for _, worker := range workers {
+		var nodesFound []internal.RpcNode
+		err := worker.Invoke(internal.RETRIEVE, node, &nodesFound)
+		if err == nil && len(nodesFound) != 0 {
+			goto genID
+		}
+	}
+	return uuid, nil
 }
