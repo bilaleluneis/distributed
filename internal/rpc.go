@@ -72,24 +72,28 @@ func (RpcNodeService) Insert(node RpcNode, _ *common.NONE) error {
 }
 
 // Delete will use criteria match and delete one or more that match
-// criteria.GrpID is mandatory
-// TODO: consider returning count of deletes
-func (srv RpcNodeService) Delete(criteria RpcNode, _ *common.NONE) error {
-	var delList []RpcNode
-	err := srv.Retrieve(criteria, &delList)
-
-	if err == nil && len(delList) > 0 {
-		updatedNodeList := make([]RpcNode, 0)
-		for _, node := range nodes[criteria.GrpID] {
-			if !found(node, delList) {
-				updatedNodeList = append(updatedNodeList, node)
-			}
-		}
-		nodes[criteria.GrpID] = updatedNodeList
-		return nil
+// criteria.GrpID is mandatory and should be same for all
+// will grab GrpID from first element and reuse while looping
+// client is responsible for passing correct info slice with uniform GrpID
+// and valid / existing UUID withen that Group
+// invalid and non found UUID withen Grp will be ignored silently
+func (RpcNodeService) Delete(nodesToDel []RpcNode, _ *common.NONE) error {
+	if len(nodesToDel) == 0 {
+		return common.NonToDelErr
 	}
+	grpId := nodesToDel[0].GrpID
+	if grpId == "" {
+		return common.ReqGrpIdErr
+	}
+	updatedNodeList := make([]RpcNode, 0)
+	for _, node := range nodes[grpId] {
+		if !found(node, nodesToDel) {
+			updatedNodeList = append(updatedNodeList, node)
+		}
 
-	return common.NoResultsErr
+	}
+	nodes[grpId] = updatedNodeList
+	return nil
 }
 
 // TODO: might want to use go routines if len(from) is larger than some value

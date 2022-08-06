@@ -15,4 +15,6 @@ const (
 	DoesNotExistGrpIdErr = Error("group id does not exist")
 	NoResultsErr         = Error("no results")
 	NoWorkerAvailErr     = Error("no available workers")
+	MultipleMatchErr     = Error("multiple matches found")
+	NonToDelErr          = Error("nothing to delete")
 )

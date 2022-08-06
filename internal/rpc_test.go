@@ -45,7 +45,8 @@ func TestRpcNode(t *testing.T) {
 	}
 
 	// Test Delete
-	err = worker.Invoke(DELETE, nodeInfo, &common.NONE{})
+	nodesToDel := []RpcNode{nodeInfo}
+	err = worker.Invoke(DELETE, nodesToDel, &common.NONE{})
 	if err != nil {
 		t.Fail()
 	}
