@@ -67,7 +67,15 @@ func (RpcNodeService) Insert(node RpcNode, _ *common.NONE) error {
 	if node.Uuid == "" {
 		return common.ReqUuidErr
 	}
-	nodes[node.GrpID] = append(nodes[node.GrpID], node)
+	grpId, uuid := node.GrpID, node.Uuid
+	//TODO: can I use channels and goroutine here?
+	for index, currNode := range nodes[grpId] {
+		if currNode.GrpID == grpId && currNode.Uuid == uuid {
+			nodes[grpId][index] = node
+			return nil
+		}
+	}
+	nodes[grpId] = append(nodes[grpId], node)
 	return nil
 }
 
