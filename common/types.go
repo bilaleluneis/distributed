@@ -28,6 +28,9 @@ func (w Worker) Invoke(s Service, args any, result any) error {
 	if err != nil {
 		return err
 	}
+	defer func(client *rpc.Client) {
+		err = client.Close()
+	}(client)
 	err = client.Call(s, args, result)
 	return err
 }
