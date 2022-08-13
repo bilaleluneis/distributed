@@ -17,4 +17,6 @@ const (
 	NoWorkerAvailErr     = Error("no available workers")
 	MultipleMatchErr     = Error("multiple matches found")
 	NonToDelErr          = Error("nothing to delete")
+	RpcServiceRegErr     = Error("failed to register rpc service")
+	InitWorkerFailed     = Error("failed to init worker")
 )

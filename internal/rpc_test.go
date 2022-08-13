@@ -2,8 +2,6 @@ package internal
 
 import (
 	"distributed/common"
-	"log"
-	"os"
 	"testing"
 )
 
@@ -54,18 +52,5 @@ func TestRpcNode(t *testing.T) {
 	if err == nil || err == common.NoResultsErr {
 		t.Fail()
 	}
-
-}
-
-func TestMain(m *testing.M) {
-
-	go func() {
-		err := InitServer(8080)
-		if err != nil {
-			log.Fatal("test server startup error", err)
-		}
-	}()
-
-	os.Exit(m.Run())
 
 }
