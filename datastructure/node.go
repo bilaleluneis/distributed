@@ -38,7 +38,7 @@ func UpdateNode[T any](withNode Node[T]) error {
 					Parent: withNode.Parent,
 					Child:  withNode.Child,
 				}
-				err = common.Get()[0].Invoke(internal.INSERT, updatedNode, &common.NONE{})
+				err = common.GetRandomAvailRegWorker().Invoke(internal.INSERT, updatedNode, &common.NONE{})
 			}
 		}
 	}
@@ -56,7 +56,7 @@ func DeleteNodes(uuids []common.UUID, forGrp common.GRPID) error {
 	for _, uuid := range uuids {
 		nodesToDel = append(nodesToDel, internal.RpcNode{GrpID: forGrp, Uuid: uuid})
 	}
-	workers := common.Get()
+	workers := common.GetAvailRegWorkers()
 	for _, worker := range workers {
 		_ = worker.Invoke(internal.DELETE, nodesToDel, &common.NONE{})
 	}
@@ -97,7 +97,7 @@ func NewNode[T any](withVal T, inGrp common.GRPID) (common.GRPID, common.UUID, e
 	var uuid common.UUID
 	var err error
 
-	workers := common.Get()
+	workers := common.GetAvailRegWorkers()
 	if len(workers) == 0 {
 		return grpId, uuid, common.NoWorkerAvailErr
 	}
@@ -124,7 +124,7 @@ func NewNode[T any](withVal T, inGrp common.GRPID) (common.GRPID, common.UUID, e
 		Uuid:  uuid,
 		Data:  buffer.Bytes(),
 	}
-	err = workers[0].Invoke(internal.INSERT, node, &common.NONE{})
+	err = common.GetRandomAvailRegWorker().Invoke(internal.INSERT, node, &common.NONE{})
 
 	return grpId, uuid, err
 }
@@ -134,7 +134,7 @@ func NewNode[T any](withVal T, inGrp common.GRPID) (common.GRPID, common.UUID, e
 // TODO: consider using channels and goroutines/ async calls
 func retrieveFromWorkers[T any](searchParm internal.RpcNode) []Node[T] {
 	result := make([]Node[T], 0)
-	workers := common.Get()
+	workers := common.GetAvailRegWorkers()
 	for _, worker := range workers {
 		nodesFound := make([]internal.RpcNode, 0)
 		err := worker.Invoke(internal.RETRIEVE, searchParm, &nodesFound)
@@ -156,7 +156,7 @@ func retrieveFromWorkers[T any](searchParm internal.RpcNode) []Node[T] {
 	return result
 }
 
-func genGroupID(workers []common.Worker) (common.GRPID, error) {
+func genGroupID(workers []common.RegisteredWorker) (common.GRPID, error) {
 genID:
 	grpId := common.GenUUID()
 	var err error
@@ -173,7 +173,7 @@ genID:
 	return grpId, err
 }
 
-func genUUID(workers []common.Worker, forGrp common.GRPID) (common.UUID, error) {
+func genUUID(workers []common.RegisteredWorker, forGrp common.GRPID) (common.UUID, error) {
 genID:
 	uuid := common.GenUUID()
 	node := internal.RpcNode{

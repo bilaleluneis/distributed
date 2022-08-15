@@ -16,14 +16,17 @@ type GRPID = string
 type Service = string
 type NONE = struct{}
 
-// Worker TODO: implement asyncInvoke
-type Worker struct {
-	Host string
-	Port int
+// RegisteredWorker
+// TODO: implement asyncInvoke
+type RegisteredWorker struct {
+	host   string
+	port   int
+	inited bool //indicator of initalization via regestration
 }
 
-func (w Worker) Invoke(s Service, args any, result any) error {
-	address := fmt.Sprintf("%s:%d", w.Host, w.Port)
+func (w RegisteredWorker) Invoke(s Service, args any, result any) error {
+	//FIXME: error if inited is false
+	address := fmt.Sprintf("%s:%d", w.host, w.port)
 	client, err := rpc.Dial("tcp", address)
 	if err != nil {
 		return err
@@ -35,25 +38,33 @@ func (w Worker) Invoke(s Service, args any, result any) error {
 	return err
 }
 
-var workers []Worker
+var registeredWorkers = make([]RegisteredWorker, 0)
 
-// Init performs initalization of workers once
-func Init(w []Worker) {
-	if len(workers) == 0 {
-		workers = w
-	}
+// RegisterWorker performs initalization of registeredWorkers once
+func RegisterWorker(host string, port int) {
+	registeredWorkers = append(registeredWorkers, RegisteredWorker{
+		host:   host,
+		port:   port,
+		inited: true,
+	})
 }
 
-// Get this will return workers in random order
-func Get() []Worker {
-	copyOfWorkers := make([]Worker, 0)
-	for _, w := range workers {
+// GetAvailRegWorkers TODO: might need to return error if no workers
+func GetAvailRegWorkers() []RegisteredWorker {
+	if len(registeredWorkers) == 0 {
+		return []RegisteredWorker{}
+	}
+	copyOfWorkers := make([]RegisteredWorker, 0)
+	for _, w := range registeredWorkers {
 		copyOfWorkers = append(copyOfWorkers, w)
 	}
-	rand.Seed(time.Now().Unix())
-	rand.Shuffle(len(copyOfWorkers), func(i, j int) {
-		copyOfWorkers[i] = copyOfWorkers[j]
-		copyOfWorkers[j] = copyOfWorkers[i]
-	})
 	return copyOfWorkers
+}
+
+// GetRandomAvailRegWorker TODO: return error when no workers
+func GetRandomAvailRegWorker() RegisteredWorker {
+	s := rand.NewSource(time.Now().UnixNano())
+	r := rand.New(s)
+	index := r.Intn(len(registeredWorkers))
+	return GetAvailRegWorkers()[index]
 }

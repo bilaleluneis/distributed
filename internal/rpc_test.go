@@ -7,11 +7,7 @@ import (
 
 func TestRpcNode(t *testing.T) {
 
-	worker := common.Worker{
-		Host: "localhost",
-		Port: 8080,
-	}
-
+	worker := common.GetAvailRegWorkers()[0]
 	var grpId common.GRPID
 	err := worker.Invoke(NEW, common.NONE{}, &grpId)
 

@@ -12,32 +12,33 @@ import (
 	"net/rpc"
 )
 
-// moved the registration of RPC service to init to ensure
-// one time registration upon inclusion of module regardless
-// of how many worker instances created.. this makes it possible
-// to create multiple workers in unit tests.
-func init() {
-	if err := rpc.Register(&RpcNodeService{}); err != nil {
-		panic(common.RpcServiceRegErr)
-	}
+type Worker struct {
+	handler  *rpc.Server
+	listener net.Listener
 }
 
-func InitWorker(port int) (net.Listener, error) {
-	listnr, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", port))
-	if err != nil {
-		log.Printf("worker failed to start on port %d", port)
-		return nil, err
+func NewWorker(atPort int) (Worker, error) {
+	var err error
+	var worker Worker
+	service := RpcNodeService{make(map[common.GRPID][]RpcNode, 0)}
+	worker.handler = rpc.NewServer()
+	if err = worker.handler.Register(&service); err != nil {
+		return worker, common.RpcServiceRegErr
 	}
-	return listnr, nil
+	address := fmt.Sprintf("0.0.0.0:%d", atPort)
+	if worker.listener, err = net.Listen("tcp", address); err != nil {
+		return worker, common.InitWorkerFailed
+	}
+	return worker, nil
 }
 
-func ProcessWorkRequest(l net.Listener) {
+func (w Worker) Start() {
 	for {
-		conn, err := l.Accept()
+		conn, err := w.listener.Accept()
 		if err != nil {
 			log.Printf("failed to process work request due: %s", err)
 			continue
 		}
-		go rpc.ServeConn(conn)
+		go w.handler.ServeConn(conn)
 	}
 }

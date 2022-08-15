@@ -10,28 +10,19 @@ import (
 
 func TestMain(m *testing.M) {
 
-	// not all those might succeed initialization
-	workers := []common.Worker{
-		{Host: "localhost", Port: 8080},
-		{Host: "localhost", Port: 8081},
-		{Host: "localhost", Port: 8083},
-	}
-
-	startedWorkers := make([]common.Worker, 0)
-	for _, worker := range workers {
-		if l, err := internal.InitWorker(worker.Port); err == nil {
-			startedWorkers = append(startedWorkers, worker)
-			go internal.ProcessWorkRequest(l)
-			log.Printf("worker at port %d started successfully", worker.Port)
+	ports := []int{8080, 8081, 8083}
+	for _, port := range ports {
+		if worker, err := internal.NewWorker(port); err == nil {
+			common.RegisterWorker("localhost", port)
+			go worker.Start()
 		}
 	}
 
 	// all workers failed initialization.. can't proceed with tests
-	if len(startedWorkers) == 0 {
-		log.Fatal("all workers returned error on startup")
+	if len(common.GetAvailRegWorkers()) == 0 {
+		log.Fatal("non of workers started up")
 	}
 
-	// proceeed Tests with workers that started correctly
-	common.Init(startedWorkers)
+	// we got here, then we have workers and we can run tests
 	os.Exit(m.Run())
 }
