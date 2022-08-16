@@ -16,6 +16,12 @@ type GRPID = string
 type Service = string
 type NONE = struct{}
 
+// TODO refactor API to use this instead of ""
+const (
+	EmptyGrpID = GRPID("")
+	EmptyUUID  = UUID("")
+)
+
 // RegisteredWorker
 // TODO: implement asyncInvoke
 type RegisteredWorker struct {

@@ -10,13 +10,14 @@ type Error string
 func (e Error) Error() string { return string(e) }
 
 const (
-	ReqGrpIdErr          = Error("group id is required")
-	ReqUuidErr           = Error("uuid is required")
-	DoesNotExistGrpIdErr = Error("group id does not exist")
-	NoResultsErr         = Error("no results")
-	NoWorkerAvailErr     = Error("no available workers")
-	MultipleMatchErr     = Error("multiple matches found")
-	NonToDelErr          = Error("nothing to delete")
-	RpcServiceRegErr     = Error("failed to register rpc service")
-	InitWorkerFailed     = Error("failed to init worker")
+	ReqGrpIdErr            = Error("group id is required")
+	ReqUuidErr             = Error("uuid is required")
+	DoesNotExistGrpIdErr   = Error("group id does not exist")
+	NoResultsErr           = Error("no results")
+	NoWorkerAvailErr       = Error("no available workers")
+	MultipleMatchErr       = Error("multiple matches found")
+	NonToDelErr            = Error("nothing to delete")
+	RpcServiceRegErr       = Error("failed to register rpc service")
+	InitWorkerFailed       = Error("failed to init worker")
+	CollectionNotInitedErr = Error("collection was not initialized, call new function")
 )
