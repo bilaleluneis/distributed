@@ -14,6 +14,7 @@ func TestMain(m *testing.M) {
 	for _, port := range ports {
 		if worker, err := internal.NewWorker(port); err == nil {
 			common.RegisterWorker("localhost", port)
+			log.Printf("Test Worker Started on Port %d", port)
 			go worker.Start()
 		}
 	}
