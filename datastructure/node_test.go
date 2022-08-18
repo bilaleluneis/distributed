@@ -14,7 +14,7 @@ import (
 func TestNode(t *testing.T) {
 	var err error
 	// Test creating a node
-	grpId, uuid, err := NewNode[int](1, "")
+	grpId, uuid, err := NewNode(1, "")
 	if err != nil {
 		t.Fatalf("Create Node: %s", err)
 	}
@@ -23,7 +23,7 @@ func TestNode(t *testing.T) {
 	}
 
 	// Test find node by value
-	nodesFound, err := FindNodesByValue[int](1, grpId)
+	nodesFound, err := FindNodesByValue(1, grpId)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,7 +45,7 @@ func TestNode(t *testing.T) {
 
 	// Test update node
 	nodeFound.Data = 2
-	err = UpdateNode[int](nodeFound)
+	err = UpdateNode(nodeFound)
 	if err != nil {
 		t.Fatal(err)
 	}
