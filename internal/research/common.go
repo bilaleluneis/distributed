@@ -71,3 +71,13 @@ type TestNodeConstraint[T any] interface {
 	set(T)
 	get() T
 }
+
+type TestInterface interface {
+	TestMethod() bool
+}
+
+type TestImpl struct {
+	Flag bool // fields must be Exported to work with GOB
+}
+
+func (tfvi TestImpl) TestMethod() bool { return true }

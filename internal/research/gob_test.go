@@ -6,6 +6,7 @@
 package research
 
 import (
+	"bytes"
 	"encoding/gob"
 	"testing"
 )
@@ -46,5 +47,31 @@ func TestGenericGob(t *testing.T) {
 	if result.get() != 1 {
 		t.Fail()
 	}
+
+}
+
+// pay attention to comments bellow to understand
+// how to make Interface types work with GOB
+func TestInterfaceOverGob(t *testing.T) {
+	// must register the concreet type
+	gob.Register(TestImpl{})
+	var network bytes.Buffer
+	var err error
+
+	// assign instance of concreet type with exported Fields to an interface var
+	var sentInterface TestInterface = TestImpl{Flag: true}
+	// pass interface by ref to encoder
+	if err = gob.NewEncoder(&network).Encode(&sentInterface); err == nil {
+		var recievedInterface TestInterface
+		// pass recieved interface by ref to decoder
+		if err = gob.NewDecoder(&network).Decode(&recievedInterface); err == nil {
+			if recievedInterface.TestMethod() {
+				return // Test success
+			}
+		}
+	}
+
+	// got here, then Test Failed
+	t.Fatalf("Failed due to err %s", err.Error())
 
 }
