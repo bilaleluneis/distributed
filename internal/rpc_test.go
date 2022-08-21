@@ -1,7 +1,13 @@
+/*	@author: Bilal El Uneis
+	@since: June 2022
+	@email: bilaleluneis@gmail.com	*/
+
 package internal
 
 import (
+	"bytes"
 	"distributed/common"
+	"encoding/gob"
 	"testing"
 )
 
@@ -49,4 +55,67 @@ func TestRpcNode(t *testing.T) {
 		t.Fail()
 	}
 
+}
+
+// Filterer Impl to use
+type VegetableFilter struct {
+	ForGrp common.GRPID // must have exported Field to work with GOB
+}
+
+func (fi VegetableFilter) Filter(m map[common.GRPID][]RpcNode) []RpcNode {
+	nodes := m[fi.ForGrp]
+	result := make([]RpcNode, 0)
+	for _, node := range nodes {
+		if bytes.Equal(node.Data, []byte("lettuce")) {
+			result = append(result, node)
+		}
+	}
+	return result
+}
+
+// To understand how interfaces work with GOB
+// look at research/gob_test.go TestInterfaceOverGob
+func TestFilter(t *testing.T) {
+	var err error
+	var grpId common.GRPID
+	worker := common.GetAvailRegWorkers()[0]
+
+	// Data setup
+	if err = worker.Invoke(NEW, common.NONE{}, &grpId); err == nil {
+		testDatas := [][]byte{
+			[]byte("apple"),
+			[]byte("orange"),
+			[]byte("lemon"),
+			[]byte("peach"),
+			[]byte("lettuce"),
+		}
+		for _, testdata := range testDatas {
+			node := RpcNode{
+				Data:  testdata,
+				GrpID: grpId,
+				Uuid:  common.GenUUID(),
+			}
+			if err = worker.Invoke(INSERT, node, &common.NONE{}); err != nil {
+				t.FailNow()
+			}
+		}
+	}
+
+	// Test starts here
+	var result []RpcNode
+	gob.Register(VegetableFilter{})
+	var filter Filterer = VegetableFilter{grpId}
+	// must pass ref to interface to work with GOB
+	if err = worker.Invoke(FILTER, &filter, &result); err == nil {
+		if len(result) != 1 {
+			t.Fatal("result legth failed")
+		}
+		if !bytes.Equal(result[0].Data, []byte("lettuce")) {
+			t.Fatal("result filter failed")
+		}
+		return // got here Test succeeded
+	}
+
+	// got here , worker invokation failed
+	t.Fatalf("worker invoke failure %s", err.Error()) // got here
 }

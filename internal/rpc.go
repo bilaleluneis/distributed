@@ -11,11 +11,12 @@ import (
 
 // available RPC calls
 const (
-	NEW        common.Service = "RpcNodeService.New"
-	INSERT                    = "RpcNodeService.Insert"
-	RETRIEVE                  = "RpcNodeService.Retrieve"
-	DELETE                    = "RpcNodeService.Delete"
-	GRPIDEXIST                = "RpcNodeService.GrpIdExist"
+	NEW        = common.Service("RpcNodeService.New")
+	INSERT     = common.Service("RpcNodeService.Insert")
+	RETRIEVE   = common.Service("RpcNodeService.Retrieve")
+	DELETE     = common.Service("RpcNodeService.Delete")
+	FILTER     = common.Service("RpcNodeService.Filter")
+	GRPIDEXIST = common.Service("RpcNodeService.GrpIdExist")
 )
 
 // RpcNode will hold information about node and will be used as DTO back and forth
@@ -51,6 +52,9 @@ func (rns RpcNodeService) GrpIdExist(grpId common.GRPID, exist *bool) error {
 	}
 	return nil
 }
+
+// TODO: create UuidExist(Node, exist *bool) err
+// use node to pass group id and generated uuid to check
 
 // Insert client is responsible for passing both Group ID and UUID
 /*
@@ -147,5 +151,10 @@ func (rns RpcNodeService) Retrieve(criteria RpcNode, result *[]RpcNode) error {
 	}
 
 	*result = resultsFound
+	return nil
+}
+
+func (rns RpcNodeService) Filter(by Filterer, result *[]RpcNode) error {
+	*result = by.Filter(rns.nodes)
 	return nil
 }
