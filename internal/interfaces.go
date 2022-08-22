@@ -6,6 +6,15 @@ package internal
 
 import "distributed/common"
 
+type Grouped interface {
+	ForGroup() common.GRPID
+}
+
+type UniqueIdentifiable interface {
+	WithUUID() common.UUID
+}
+
 type Filterer interface {
-	Filter(map[common.GRPID][]RpcNode) []RpcNode
+	Grouped
+	Filter([]RpcNode) []RpcNode
 }

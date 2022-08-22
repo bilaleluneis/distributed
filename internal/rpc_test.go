@@ -62,8 +62,11 @@ type VegetableFilter struct {
 	ForGrp common.GRPID // must have exported Field to work with GOB
 }
 
-func (fi VegetableFilter) Filter(m map[common.GRPID][]RpcNode) []RpcNode {
-	nodes := m[fi.ForGrp]
+func (fi VegetableFilter) ForGroup() common.GRPID {
+	return fi.ForGrp
+}
+
+func (fi VegetableFilter) Filter(nodes []RpcNode) []RpcNode {
 	result := make([]RpcNode, 0)
 	for _, node := range nodes {
 		if bytes.Equal(node.Data, []byte("lettuce")) {

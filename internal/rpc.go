@@ -174,7 +174,7 @@ func (rns RpcNodeService) Retrieve(criteria RpcNode, result *[]RpcNode) error {
 
 func (rns RpcNodeService) Filter(by Filterer, result *[]RpcNode) error {
 	var err error
-	filterResult := by.Filter(rns.nodes)
+	filterResult := by.Filter(rns.nodes[by.ForGroup()])
 	if len(filterResult) == 0 {
 		err = common.NoResultsErr
 		filterResult = make([]RpcNode, 0)
