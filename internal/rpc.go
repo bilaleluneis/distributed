@@ -30,7 +30,7 @@ type RpcNode struct {
 
 // RpcNodeService : RPC service type
 type RpcNodeService struct {
-	nodes map[common.GRPID][]RpcNode
+	nodes map[common.GRPID][]RpcNode //TODO: mutex and sync access ?
 }
 
 // New returns an available Group ID on this worker
@@ -53,8 +53,26 @@ func (rns RpcNodeService) GrpIdExist(grpId common.GRPID, exist *bool) error {
 	return nil
 }
 
-// TODO: create UuidExist(Node, exist *bool) err
-// use node to pass group id and generated uuid to check
+func (rns RpcNodeService) UuidExist(node RpcNode, exist *bool) error {
+	if node.GrpID == common.EmptyGrpID {
+		return common.ReqGrpIdErr
+	}
+	if node.Uuid == common.EmptyUUID {
+		return common.ReqUuidErr
+	}
+	grpId := node.GrpID
+	uuid := node.Uuid
+	if nodes, ok := rns.nodes[grpId]; ok {
+		for _, node := range nodes {
+			if node.Uuid == uuid {
+				*exist = true
+				break
+			}
+		}
+		return nil
+	}
+	return common.DoesNotExistGrpIdErr
+}
 
 // Insert client is responsible for passing both Group ID and UUID
 /*
@@ -65,10 +83,10 @@ or even duplicate on another worker. if both group id and uuid do not exist
 this method will generate both.
 */
 func (rns *RpcNodeService) Insert(node RpcNode, _ *common.NONE) error {
-	if node.GrpID == "" {
+	if node.GrpID == common.EmptyGrpID {
 		return common.ReqGrpIdErr
 	}
-	if node.Uuid == "" {
+	if node.Uuid == common.EmptyUUID {
 		return common.ReqUuidErr
 	}
 	grpId, uuid := node.GrpID, node.Uuid
@@ -94,7 +112,7 @@ func (rns *RpcNodeService) Delete(nodesToDel []RpcNode, _ *common.NONE) error {
 		return common.NonToDelErr
 	}
 	grpId := nodesToDel[0].GrpID
-	if grpId == "" {
+	if grpId == common.EmptyGrpID {
 		return common.ReqGrpIdErr
 	}
 	updatedNodeList := make([]RpcNode, 0)
@@ -124,7 +142,7 @@ func found(node RpcNode, from []RpcNode) bool {
 // TODO: consider using go routines to search faster
 // FIXME: for now just checking against data and uuid, impl is slow
 func (rns RpcNodeService) Retrieve(criteria RpcNode, result *[]RpcNode) error {
-	if criteria.GrpID == "" {
+	if criteria.GrpID == common.EmptyGrpID {
 		return common.ReqGrpIdErr
 	}
 
@@ -139,7 +157,7 @@ func (rns RpcNodeService) Retrieve(criteria RpcNode, result *[]RpcNode) error {
 	resultsFound := make([]RpcNode, 0)
 	for _, n := range rnodes {
 		found := false
-		if criteria.Uuid != "" && n.Uuid == criteria.Uuid {
+		if criteria.Uuid != common.EmptyUUID && n.Uuid == criteria.Uuid {
 			found = true
 		}
 		if len(criteria.Data) != 0 && bytes.Equal(criteria.Data, n.Data) {
@@ -155,6 +173,12 @@ func (rns RpcNodeService) Retrieve(criteria RpcNode, result *[]RpcNode) error {
 }
 
 func (rns RpcNodeService) Filter(by Filterer, result *[]RpcNode) error {
-	*result = by.Filter(rns.nodes)
-	return nil
+	var err error
+	filterResult := by.Filter(rns.nodes)
+	if len(filterResult) == 0 {
+		err = common.NoResultsErr
+		filterResult = make([]RpcNode, 0)
+	}
+	*result = filterResult
+	return err
 }

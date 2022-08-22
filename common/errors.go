@@ -13,6 +13,7 @@ const (
 	ReqGrpIdErr            = Error("group id is required")
 	ReqUuidErr             = Error("uuid is required")
 	DoesNotExistGrpIdErr   = Error("group id does not exist")
+	DoesNotExistUuidErr    = Error("uuid does not exist")
 	NoResultsErr           = Error("no results")
 	NoWorkerAvailErr       = Error("no available workers")
 	MultipleMatchErr       = Error("multiple matches found")
