@@ -16,6 +16,7 @@ const (
 	RETRIEVE   = common.Service("RpcNodeService.Retrieve")
 	DELETE     = common.Service("RpcNodeService.Delete")
 	FILTER     = common.Service("RpcNodeService.Filter")
+	REDUCE     = common.Service("RpcNodeService.Reduce")
 	GRPIDEXIST = common.Service("RpcNodeService.GrpIdExist")
 )
 
@@ -29,13 +30,15 @@ type RpcNode struct {
 }
 
 // RpcNodeService : RPC service type
+// TODO: mutex and sync access ?
 type RpcNodeService struct {
-	nodes map[common.GRPID][]RpcNode //TODO: mutex and sync access ?
+	nodes   map[common.GRPID][]RpcNode
+	funcOps map[common.GRPID][]Functional
 }
 
 // New returns an available Group ID on this worker
 // the client is responsible for making sure that this
-// Group ID does not already exist on other workers
+// Group I D does not already exist on other workers
 // TODO: might not need this method if I do GRPID generation on client side
 func (rns *RpcNodeService) New(_ common.NONE, grpId *common.GRPID) error {
 	id := common.GenUUID()
@@ -172,13 +175,33 @@ func (rns RpcNodeService) Retrieve(criteria RpcNode, result *[]RpcNode) error {
 	return nil
 }
 
-func (rns RpcNodeService) Filter(by Filterer, result *[]RpcNode) error {
-	var err error
-	filterResult := by.Filter(rns.nodes[by.ForGroup()])
-	if len(filterResult) == 0 {
-		err = common.NoResultsErr
-		filterResult = make([]RpcNode, 0)
+func (rns *RpcNodeService) Filter(by FunctionParam, _ *common.NONE) error {
+	if by.GrpID == common.EmptyGrpID {
+		return common.ReqGrpIdErr
 	}
-	*result = filterResult
-	return err
+	grpId := by.GrpID
+	_, ok := rns.funcOps[grpId]
+	if ok {
+		rns.funcOps[grpId] = append(rns.funcOps[grpId], by.Function)
+	} else {
+		rns.funcOps[grpId] = []Functional{by.Function}
+	}
+	return nil
+}
+
+func (rns *RpcNodeService) Reduce(by FunctionParam, result *[]RpcNode) error {
+	//TODO: error checks
+	grpId := by.GrpID
+	var resultOfPrevCall []RpcNode
+	for index, f := range rns.funcOps[grpId] {
+		if index == 0 {
+			resultOfPrevCall = f.Func(rns.nodes[grpId])
+		} else {
+			resultOfPrevCall = f.Func(resultOfPrevCall)
+		}
+
+	}
+	*result = by.Function.Func(resultOfPrevCall)
+	delete(rns.funcOps, grpId)
+	return nil
 }

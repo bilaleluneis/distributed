@@ -58,15 +58,9 @@ func TestRpcNode(t *testing.T) {
 }
 
 // Filterer Impl to use
-type VegetableFilter struct {
-	ForGrp common.GRPID // must have exported Field to work with GOB
-}
+type vegetableFilter struct{}
 
-func (fi VegetableFilter) ForGroup() common.GRPID {
-	return fi.ForGrp
-}
-
-func (fi VegetableFilter) Filter(nodes []RpcNode) []RpcNode {
+func (fi vegetableFilter) Func(nodes []RpcNode) []RpcNode {
 	result := make([]RpcNode, 0)
 	for _, node := range nodes {
 		if bytes.Equal(node.Data, []byte("lettuce")) {
@@ -74,6 +68,12 @@ func (fi VegetableFilter) Filter(nodes []RpcNode) []RpcNode {
 		}
 	}
 	return result
+}
+
+type doNothingReduce struct{}
+
+func (r doNothingReduce) Func(nodes []RpcNode) []RpcNode {
+	return nodes
 }
 
 // To understand how interfaces work with GOB
@@ -105,16 +105,23 @@ func TestFilter(t *testing.T) {
 	}
 
 	// Test starts here
-	var result []RpcNode
-	gob.Register(VegetableFilter{})
-	var filter Filterer = VegetableFilter{grpId}
+
+	// register types for Functional Interface
+	gob.Register(vegetableFilter{})
+	gob.Register(doNothingReduce{})
+
+	param := FunctionParam{
+		GrpID:    grpId,
+		Function: &vegetableFilter{},
+	}
 	// must pass ref to interface to work with GOB
-	if err = worker.Invoke(FILTER, &filter, &result); err == nil {
-		if len(result) != 1 {
-			t.Fatal("result legth failed")
-		}
-		if !bytes.Equal(result[0].Data, []byte("lettuce")) {
-			t.Fatal("result filter failed")
+	if err = worker.Invoke(FILTER, &param, &common.NONE{}); err == nil {
+		param.Function = &doNothingReduce{}
+		var result []RpcNode
+		if err = worker.Invoke(REDUCE, &param, &result); err == nil {
+			if len(result) != 1 || !bytes.Equal(result[0].Data, []byte("lettuce")) {
+				t.Fail()
+			}
 		}
 		return // got here Test succeeded
 	}

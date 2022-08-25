@@ -20,7 +20,10 @@ type Worker struct {
 func NewWorker(atPort int) (Worker, error) {
 	var err error
 	var worker Worker
-	service := RpcNodeService{make(map[common.GRPID][]RpcNode, 0)}
+	service := RpcNodeService{
+		nodes:   make(map[common.GRPID][]RpcNode, 0),
+		funcOps: make(map[common.GRPID][]Functional, 0),
+	}
 	worker.handler = rpc.NewServer()
 	if err = worker.handler.Register(&service); err != nil {
 		return worker, common.RpcServiceRegErr
