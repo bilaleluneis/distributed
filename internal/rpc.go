@@ -190,18 +190,20 @@ func (rns *RpcNodeService) Filter(by FunctionParam, _ *common.NONE) error {
 }
 
 func (rns *RpcNodeService) Reduce(by FunctionParam, result *[]RpcNode) error {
-	//TODO: error checks
 	grpId := by.GrpID
-	var resultOfPrevCall []RpcNode
-	for index, f := range rns.funcOps[grpId] {
-		if index == 0 {
-			resultOfPrevCall = f.Func(rns.nodes[grpId])
-		} else {
-			resultOfPrevCall = f.Func(resultOfPrevCall)
+	var validGrpId bool
+	if _ = rns.GrpIdExist(grpId, &validGrpId); validGrpId {
+		var resultOfPrevCall []RpcNode
+		defer delete(rns.funcOps, grpId)
+		for index, f := range rns.funcOps[grpId] {
+			if index == 0 {
+				resultOfPrevCall = f.Func(rns.nodes[grpId])
+			} else {
+				resultOfPrevCall = f.Func(resultOfPrevCall)
+			}
 		}
-
+		*result = by.Function.Func(resultOfPrevCall)
+		return nil
 	}
-	*result = by.Function.Func(resultOfPrevCall)
-	delete(rns.funcOps, grpId)
-	return nil
+	return common.DoesNotExistGrpIdErr
 }
