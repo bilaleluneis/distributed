@@ -6,61 +6,133 @@ package datastructure
 
 import (
 	"distributed/common"
+	"log"
 	"testing"
 )
 
-// TODO: clean up test with better details and use cases
-// add tests with multiple workers
-func TestNode(t *testing.T) {
+func TestNewNode(t *testing.T) {
+	if grpId, uuid, err := NewNode[int](1, common.EmptyGrpID); err == nil {
+		if grpId == common.EmptyGrpID {
+			log.Printf("empty group id")
+			t.Fail()
+		}
+		if uuid == common.EmptyUUID {
+			log.Printf("empty uuid")
+			t.Fail()
+		}
+	} else {
+		t.Fatalf("NewNode failed with error %s", err.Error())
+	}
+}
+
+func TestFindNodeByUuid(t *testing.T) {
+	var grpId common.GRPID
+	var uuid common.UUID
 	var err error
-	// Test creating a node
-	grpId, uuid, err := NewNode(1, "")
-	if err != nil {
-		t.Fatalf("Create Node: %s", err)
-	}
-	if grpId == "" || uuid == "" {
-		t.Fatalf("Create Node GrpID or UUID is empty")
+	var node Node[int]
+	value := 1
+
+	// NOTE: if failed here then check TestNewNode
+	if grpId, uuid, err = NewNode[int](value, common.EmptyGrpID); err != nil {
+		t.Fatalf("creating new node failed due %s", err.Error())
 	}
 
-	// Test find node by value
-	nodesFound, err := FindNodesByValue(1, grpId)
-	if err != nil {
-		t.Fatal(err)
+	// Test find node by uuid starts
+	if node, err = FindNodeByUuid[int](uuid, grpId); err != nil {
+		t.Fatalf("finding node by uuid with error %s", err.Error())
 	}
-	if len(nodesFound) != 1 {
-		t.Fatalf("multiple results")
+	if node.Uuid != uuid || node.GrpId != grpId {
+		t.Fatal("node uuid and/or node grpId do not match request")
 	}
-	if nodesFound[0].Data != 1 {
-		t.Fatalf("incorrect value for Data")
+	if node.Data != value {
+		t.Fatalf("value of node doesnt match expected %d got %d", value, node.Data)
+	}
+}
+
+func TestFindNodesByValue(t *testing.T) {
+	var grpId common.GRPID
+	var err error
+	var nodes []Node[int]
+	values := []int{2, 3, 4, 2, 6, 7, 8, 9, 2}
+
+	// Setup Test Data
+	for _, value := range values {
+		if grpId, _, err = NewNode[int](value, grpId); err != nil {
+			t.Fatalf("creating new nodes failed due %s", err.Error())
+		}
 	}
 
-	//Test find node by uuid
-	nodeFound, err := FindNodeByUuid[int](nodesFound[0].Uuid, nodesFound[0].GrpId)
+	// Test find nodes by value
+	nodes, err = FindNodesByValue[int](2, grpId)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("finding node by value with error %s", err.Error())
 	}
-	if nodeFound.Uuid != nodesFound[0].Uuid {
-		t.Fatalf("incorrect value for Data")
+	if len(nodes) != 3 {
+		t.Fatalf("expected 3 nodes got %d", len(nodes))
+	}
+	for _, node := range nodes {
+		if node.Data != 2 {
+			t.Fatalf("%s has value of %d expected 2", node, node.Data)
+		}
+	}
+}
+
+func TestUpdateNode(t *testing.T) {
+	var grpId common.GRPID
+	var uuid common.UUID
+	var err error
+
+	// Setup Test Data
+	if grpId, uuid, err = NewNode[int](1, grpId); err != nil {
+		t.Fatalf("creating new nodes failed due %s", err.Error())
 	}
 
-	// Test update node
-	nodeFound.Data = 2
-	err = UpdateNode(nodeFound)
+	// Test Update
+	err = UpdateNode[int](Node[int]{
+		GrpId: grpId,
+		Uuid:  uuid,
+		Data:  2,
+	})
 	if err != nil {
-		t.Fatal(err)
-	}
-	nodeFound, err = FindNodeByUuid[int](nodeFound.Uuid, nodeFound.GrpId)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if nodeFound.Data != 2 {
-		t.Fatalf("node was not updated")
+		t.Fatalf("update node failed due %s", err.Error())
 	}
 
-	//Test Delete node
-	_ = DeleteNodes([]common.UUID{nodeFound.Uuid}, nodeFound.GrpId)
-	_, err = FindNodeByUuid[int](nodeFound.Uuid, nodeFound.GrpId)
-	if err != common.NoResultsErr {
-		t.Fatalf("found a Deleted node")
+	// Retrieve and verify update
+	updatedNode, err := FindNodeByUuid[int](uuid, grpId)
+	if err != nil {
+		t.Fatalf("retrieve updated node failed due %s", err.Error())
+	}
+	if updatedNode.Data != 2 {
+		t.Fatalf("updat node failed expected value of 2 got %d", updatedNode.Data)
+	}
+}
+
+func TestDeleteNodes(t *testing.T) {
+	var grpId common.GRPID
+	var err error
+	var nodes []Node[int]
+	values := []int{2, 3, 4, 2, 6, 7, 8, 9, 2}
+
+	// Setup Test Data
+	for _, value := range values {
+		if grpId, _, err = NewNode[int](value, grpId); err != nil {
+			t.Fatalf("creating new nodes failed due %s", err.Error())
+		}
+	}
+
+	// Find nodes to delete
+	nodes, _ = FindNodesByValue[int](2, grpId)
+	uuids := make([]common.UUID, 0)
+	for _, node := range nodes {
+		uuids = append(uuids, node.Uuid)
+	}
+
+	// Test Delete
+	err = DeleteNodes(uuids, grpId)
+	if err != nil {
+		t.Fatalf("delete nodes failed due %s", err.Error())
+	}
+	if _, err := FindNodesByValue(2, grpId); err != common.NoResultsErr {
+		t.Fatal("expected no result error")
 	}
 }
