@@ -6,8 +6,15 @@ package datastructure
 
 import (
 	"distributed/common"
+	"distributed/internal"
+	"encoding/gob"
 	"testing"
 )
+
+func init() {
+	gob.Register(lessThanHundredFilter{})
+	gob.Register(accumilateReducer{})
+}
 
 func TestLinkedListCreation(t *testing.T) {
 	// creating an Empty list
@@ -63,5 +70,54 @@ func TestLinkedListPush(t *testing.T) {
 	}
 	if l.Len() != 2 {
 		t.Fatalf("size after second push should be 2 instead %d", l.Len())
+	}
+}
+
+type lessThanHundredFilter struct{}
+
+func (lessThanHundredFilter) Func(nodes []internal.RpcNode) []internal.RpcNode {
+	result := make([]internal.RpcNode, 0)
+	if len(nodes) != 0 {
+		for index, n := range nodes {
+			if decode[int]([]internal.RpcNode{n})[0].Data < 100 {
+				result = append(result, nodes[index])
+			}
+		}
+	}
+	return result
+}
+
+func TestLinkedListFilter(t *testing.T) {
+	if l, err := NewLinkedListWithValues[int](1, 2, 3, 400, 99, 500); err == nil {
+		if result, err := l.Filter(lessThanHundredFilter{}).Compute(); err == nil {
+			if len(result) == 4 {
+				return
+			}
+		}
+	}
+	t.Fail()
+}
+
+type accumilateReducer struct{}
+
+func (accumilateReducer) Func(nodes []internal.RpcNode) []internal.RpcNode {
+	var result int
+	if len(nodes) != 0 {
+		for _, n := range nodes {
+			result = result + decode[int]([]internal.RpcNode{n})[0].Data
+		}
+	}
+	return encode[int]([]Node[int]{{Data: result}})
+}
+
+func TestLinkedListReduce(t *testing.T) {
+	values := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 100, 1000}
+	if l, err := NewLinkedListWithValues[int](values...); err == nil {
+		if result, err := l.Filter(lessThanHundredFilter{}).Reduce(accumilateReducer{}); err == nil {
+			if result == 55 {
+				return
+			}
+		}
+		t.Fail()
 	}
 }
