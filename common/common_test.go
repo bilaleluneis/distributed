@@ -7,7 +7,6 @@ package common
 import "testing"
 
 func TestWorkerRegistration(t *testing.T) {
-
 	availableWorkers := GetAvailRegWorkers()
 	numAvailWorkers := len(availableWorkers)
 
@@ -33,8 +32,4 @@ func TestWorkerRegistration(t *testing.T) {
 	if numAvailWorkers != len(workers) {
 		t.Fatalf("expected %d workers but got %d", len(workers), numAvailWorkers)
 	}
-
-	//TODO:
-	// Test Random Worker
-
 }

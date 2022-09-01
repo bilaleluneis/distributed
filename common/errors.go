@@ -20,5 +20,6 @@ const (
 	NonToDelErr            = Error("nothing to delete")
 	RpcServiceRegErr       = Error("failed to register rpc service")
 	InitWorkerFailed       = Error("failed to init worker")
+	WorkerNotValidErr      = Error("worker was not instantiated correclty")
 	CollectionNotInitedErr = Error("collection was not initialized, call new function")
 )

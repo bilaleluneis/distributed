@@ -22,6 +22,31 @@ const (
 	EmptyUUID  = UUID("")
 )
 
+type NodeLike[T any] interface {
+	GetData() T
+	SetData(T)
+
+	GetGrpID() GRPID
+	SetGrpID(GRPID)
+
+	GetUuID() UUID
+	SetUuID(UUID)
+
+	GetParent() UUID
+	SetParent(UUID)
+
+	GetChild() UUID
+	SetChild(UUID)
+}
+
+type Filterer[T any] interface {
+	Filter(NodeLike[T]) bool
+}
+
+type Reducer[T any, R any] interface {
+	Reduce(...NodeLike[T]) R
+}
+
 // RegisteredWorker
 // TODO: implement asyncInvoke
 type RegisteredWorker struct {
@@ -31,16 +56,19 @@ type RegisteredWorker struct {
 }
 
 func (w RegisteredWorker) Invoke(s Service, args any, result any) error {
-	//FIXME: error if inited is false
-	address := fmt.Sprintf("%s:%d", w.host, w.port)
-	client, err := rpc.Dial("tcp", address)
-	if err != nil {
-		return err
+	var err error = WorkerNotValidErr
+	if w.inited {
+		address := fmt.Sprintf("%s:%d", w.host, w.port)
+		var client *rpc.Client
+		client, err = rpc.Dial("tcp", address)
+		if err != nil {
+			return err
+		}
+		defer func(client *rpc.Client) {
+			err = client.Close()
+		}(client)
+		err = client.Call(s, args, result)
 	}
-	defer func(client *rpc.Client) {
-		err = client.Close()
-	}(client)
-	err = client.Call(s, args, result)
 	return err
 }
 
@@ -55,7 +83,6 @@ func RegisterWorker(host string, port int) {
 	})
 }
 
-// GetAvailRegWorkers TODO: might need to return error if no workers
 func GetAvailRegWorkers() []RegisteredWorker {
 	if len(registeredWorkers) == 0 {
 		return []RegisteredWorker{}
@@ -67,10 +94,12 @@ func GetAvailRegWorkers() []RegisteredWorker {
 	return copyOfWorkers
 }
 
-// GetRandomAvailRegWorker TODO: return error when no workers
-func GetRandomAvailRegWorker() RegisteredWorker {
+func GetRandomAvailRegWorker() (RegisteredWorker, error) {
+	if len(registeredWorkers) == 0 {
+		return RegisteredWorker{}, NoWorkerAvailErr
+	}
 	s := rand.NewSource(time.Now().UnixNano())
 	r := rand.New(s)
 	index := r.Intn(len(registeredWorkers))
-	return GetAvailRegWorkers()[index]
+	return GetAvailRegWorkers()[index], nil
 }
