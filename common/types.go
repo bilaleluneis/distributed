@@ -37,11 +37,15 @@ type Node[T any] struct {
 	Child  UUID
 }
 
-func (in Node[T]) GetData() T      { return in.Data }
-func (in Node[T]) GetGrpID() GRPID { return in.GrpId }
-func (in Node[T]) GetUuID() UUID   { return in.Uuid }
-func (in Node[T]) GetParent() UUID { return in.Parent }
-func (in Node[T]) GetChild() UUID  { return in.Child }
+func (n Node[T]) GetData() T      { return n.Data }
+func (n Node[T]) GetGrpID() GRPID { return n.GrpId }
+func (n Node[T]) GetUuID() UUID   { return n.Uuid }
+func (n Node[T]) GetParent() UUID { return n.Parent }
+func (n Node[T]) GetChild() UUID  { return n.Child }
+func (n Node[T]) String() string {
+	rep := "Node[T]: grpId=%s uuid=%s parent=%s child=%s"
+	return fmt.Sprintf(rep, n.GrpId, n.Uuid, n.Parent, n.Child)
+}
 
 type Filterer[T any] interface {
 	Filter(NodeLike[T]) bool
