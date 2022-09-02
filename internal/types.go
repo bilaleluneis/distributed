@@ -26,7 +26,7 @@ type Filter[F common.Filterer[T], T any] struct {
 func (f Filter[F, T]) Eval(rpcNodes []RpcNode) []RpcNode {
 	result := make([]RpcNode, 0)
 	for _, rpcNode := range rpcNodes {
-		n := decode[T](rpcNode)
+		n := Decode[T](rpcNode)
 		var node common.NodeLike[T] = &n[0]
 		if f.WithFilter.Filter(node) {
 			result = append(result, rpcNode)
@@ -40,13 +40,13 @@ type Reduce[R common.Reducer[T, O], T any, O any] struct {
 }
 
 func (r Reduce[R, T, O]) Eval(rpcNodes []RpcNode) []RpcNode {
-	nodes := decode[T](rpcNodes...)
+	nodes := Decode[T](rpcNodes...)
 	reductionList := make([]common.NodeLike[T], 0)
 	for _, n := range nodes {
 		var reductionNode common.NodeLike[T] = &n
 		reductionList = append(reductionList, reductionNode)
 	}
-	return []RpcNode{encode[O](&common.Node[O]{
+	return []RpcNode{Encode[O](&common.Node[O]{
 		Data: r.WithReducer.Reduce(reductionList...),
 	})[0]}
 }
@@ -58,14 +58,14 @@ type Map[M common.Mapper[T], T any] struct {
 func (m Map[M, T]) Eval(rpcNodes []RpcNode) []RpcNode {
 	result := make([]RpcNode, 0)
 	for _, rpcNode := range rpcNodes {
-		node := decode[T](rpcNode)[0]
+		node := Decode[T](rpcNode)[0]
 		mappedNode := m.WithMapper.Map(&node)
-		result = append(result, encode[T](mappedNode)[0])
+		result = append(result, Encode[T](mappedNode)[0])
 	}
 	return result
 }
 
-func encode[T any](nodes ...common.NodeLike[T]) []RpcNode {
+func Encode[T any](nodes ...common.NodeLike[T]) []RpcNode {
 	result := make([]RpcNode, 0)
 	for _, n := range nodes {
 		var buffer bytes.Buffer
@@ -83,7 +83,7 @@ func encode[T any](nodes ...common.NodeLike[T]) []RpcNode {
 	return result
 }
 
-func decode[T any](rpcNodes ...RpcNode) []common.Node[T] {
+func Decode[T any](rpcNodes ...RpcNode) []common.Node[T] {
 	result := make([]common.Node[T], 0)
 	for _, n := range rpcNodes {
 		var buffer bytes.Buffer
