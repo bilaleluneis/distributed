@@ -5,9 +5,7 @@
 package internal
 
 import (
-	"bytes"
 	"distributed/common"
-	"encoding/gob"
 )
 
 type vegetableFilter struct{}
@@ -28,22 +26,6 @@ func (cr countReducer) Reduce(items ...common.NodeLike[string]) int {
 
 // Utils
 
-func toBytes[T any](data T) ([]byte, error) {
-	var buffer bytes.Buffer
-	if err := gob.NewEncoder(&buffer).Encode(data); err != nil {
-		return []byte{}, err
-	}
-	return buffer.Bytes(), nil
-}
-
-func toType[T any](data []byte) (T, error) {
-	var buffer bytes.Buffer
-	buffer.Write(data)
-	var result T
-	err := gob.NewDecoder(&buffer).Decode(&result)
-	return result, err
-}
-
 func genTestNodes[T any](data ...T) (common.GRPID, error) {
 	var err error
 	var worker common.RegisteredWorker
@@ -57,7 +39,7 @@ func genTestNodes[T any](data ...T) (common.GRPID, error) {
 	testDatas := make([][]byte, 0)
 	for _, item := range data {
 		var b []byte
-		if b, err = toBytes(item); err == nil {
+		if b, err = common.ToBytes(item); err == nil {
 			testDatas = append(testDatas, b)
 		}
 	}

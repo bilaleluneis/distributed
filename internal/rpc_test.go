@@ -26,7 +26,7 @@ func TestCreateRetrieve(t *testing.T) {
 	}
 
 	//setup Data to insert
-	sentData, err = toBytes[int](1)
+	sentData, err = common.ToBytes[int](1)
 	node := RpcNode{
 		Data:  sentData,
 		GrpID: grpId,
@@ -48,7 +48,7 @@ func TestCreateRetrieve(t *testing.T) {
 	if err = worker.Invoke(RETRIEVE, nodeInfo, &retResult); err != nil {
 		t.Fatalf("RETRIEVE with error %s", err.Error())
 	}
-	returnedData, err = toType[int](retResult[0].Data)
+	returnedData, err = common.ToType[int](retResult[0].Data)
 	if err != nil {
 		t.Fatalf("conversion back failed with error %s", err.Error())
 	}
@@ -99,7 +99,7 @@ func TestFilterReduceOp(t *testing.T) {
 	if err = worker.Invoke(REDUCE, &param, &rpcCallResult); err != nil {
 		t.Fatalf("error %s", err.Error())
 	}
-	count, err := toType[int](rpcCallResult)
+	count, err := common.ToType[int](rpcCallResult)
 	if err != nil {
 		t.Fatalf("conversion to int %s", err.Error())
 	}
