@@ -21,8 +21,8 @@ func NewWorker(atPort int) (Worker, error) {
 	var err error
 	var worker Worker
 	service := RpcNodeService{
-		nodes:   make(map[common.GRPID][]RpcNode, 0),
-		funcOps: make(map[common.GRPID][]Functional, 0),
+		nodes: make(map[common.GRPID][]RpcNode, 0),
+		ops:   make(map[common.GRPID][]FunctionalOp, 0),
 	}
 	worker.handler = rpc.NewServer()
 	if err = worker.handler.Register(&service); err != nil {

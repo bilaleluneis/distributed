@@ -32,8 +32,8 @@ type RpcNode struct {
 // RpcNodeService : RPC service type
 // TODO: mutex and sync access ?
 type RpcNodeService struct {
-	nodes   map[common.GRPID][]RpcNode
-	funcOps map[common.GRPID][]Functional
+	nodes map[common.GRPID][]RpcNode
+	ops   map[common.GRPID][]FunctionalOp
 }
 
 // New returns an available Group ID on this worker
@@ -171,38 +171,41 @@ func (rns RpcNodeService) Retrieve(criteria RpcNode, result *[]RpcNode) error {
 		}
 	}
 
+	if len(resultsFound) == 0 {
+		return common.NoResultsErr
+	}
+
 	*result = resultsFound
 	return nil
 }
 
-func (rns *RpcNodeService) Filter(by FunctionParam, _ *common.NONE) error {
-	if by.GrpID == common.EmptyGrpID {
+func (rns *RpcNodeService) Filter(by FuncParam, _ *common.NONE) error {
+	if by.GrpId == common.EmptyGrpID {
 		return common.ReqGrpIdErr
 	}
-	grpId := by.GrpID
-	_, ok := rns.funcOps[grpId]
+	grpId := by.GrpId
+	_, ok := rns.ops[grpId]
 	if ok {
-		rns.funcOps[grpId] = append(rns.funcOps[grpId], by.Function)
+		rns.ops[grpId] = append(rns.ops[grpId], by.Op)
 	} else {
-		rns.funcOps[grpId] = []Functional{by.Function}
+		rns.ops[grpId] = []FunctionalOp{by.Op}
 	}
 	return nil
 }
 
-func (rns *RpcNodeService) Reduce(by FunctionParam, result *[]RpcNode) error {
-	grpId := by.GrpID
+// Reduce assumption here is that FuncParam will hold Reduce Type
+// TODO: need to check i Op is of type Reduce
+func (rns *RpcNodeService) Reduce(by FuncParam, result *[]byte) error {
+	grpId := by.GrpId
 	var validGrpId bool
 	if _ = rns.GrpIdExist(grpId, &validGrpId); validGrpId {
-		var resultOfPrevCall []RpcNode
-		defer delete(rns.funcOps, grpId)
-		for index, f := range rns.funcOps[grpId] {
-			if index == 0 {
-				resultOfPrevCall = f.Func(rns.nodes[grpId])
-			} else {
-				resultOfPrevCall = f.Func(resultOfPrevCall)
-			}
+		defer delete(rns.ops, grpId)
+		currData := rns.nodes[grpId]
+		for _, f := range rns.ops[grpId] {
+			currData = f.Eval(currData)
 		}
-		*result = by.Function.Func(resultOfPrevCall)
+		reduction := by.Op.Eval(currData)
+		*result = reduction[0].Data
 		return nil
 	}
 	return common.DoesNotExistGrpIdErr

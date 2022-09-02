@@ -5,127 +5,105 @@
 package internal
 
 import (
-	"bytes"
 	"distributed/common"
 	"encoding/gob"
 	"testing"
 )
 
-func TestRpcNode(t *testing.T) {
-
-	worker := common.GetAvailRegWorkers()[0]
+func TestCreateRetrieve(t *testing.T) {
+	var err error
+	var worker common.RegisteredWorker
 	var grpId common.GRPID
-	err := worker.Invoke(NEW, common.NONE{}, &grpId)
+	var sentData []byte
+	var returnedData int
+	var retResult []RpcNode
 
+	if worker, err = common.GetRandomAvailRegWorker(); err != nil {
+		t.Fatal(err)
+	}
+	if err = worker.Invoke(NEW, common.NONE{}, &grpId); err != nil {
+		t.Fatalf("NEW with error %s", err.Error())
+	}
+
+	//setup Data to insert
+	sentData, err = toBytes[int](1)
 	node := RpcNode{
-		Data:  []byte("testData"),
+		Data:  sentData,
 		GrpID: grpId,
 		Uuid:  common.GenUUID(),
 	}
 
 	// Test Insert
-	err = worker.Invoke(INSERT, node, &common.NONE{})
-	if err != nil {
-		t.Fail()
+	if err = worker.Invoke(INSERT, node, &common.NONE{}); err != nil {
+		t.Fatalf("INSERT with error %s", err.Error())
 	}
 
+	// validate via Retrieve
 	nodeInfo := RpcNode{
 		GrpID: grpId,
 		Uuid:  node.Uuid,
 	}
-	var result []RpcNode
 
 	// Test Retrieve
-	err = worker.Invoke(RETRIEVE, nodeInfo, &result)
+	if err = worker.Invoke(RETRIEVE, nodeInfo, &retResult); err != nil {
+		t.Fatalf("RETRIEVE with error %s", err.Error())
+	}
+	returnedData, err = toType[int](retResult[0].Data)
 	if err != nil {
-		t.Fail()
+		t.Fatalf("conversion back failed with error %s", err.Error())
 	}
-	if len(result) == 0 {
-		t.Fail()
+	if returnedData != 1 {
+		t.Fatalf("conversion back failed expected 1 got %d", returnedData)
 	}
-
-	// Test Delete
-	nodesToDel := []RpcNode{nodeInfo}
-	err = worker.Invoke(DELETE, nodesToDel, &common.NONE{})
-	if err != nil {
-		t.Fail()
-	}
-	err = worker.Invoke(RETRIEVE, nodeInfo, &result)
-	if err == nil || err == common.NoResultsErr {
-		t.Fail()
-	}
-
-}
-
-// Filterer Impl to use
-type vegetableFilter struct{}
-
-func (fi vegetableFilter) Func(nodes []RpcNode) []RpcNode {
-	result := make([]RpcNode, 0)
-	for _, node := range nodes {
-		if bytes.Equal(node.Data, []byte("lettuce")) {
-			result = append(result, node)
-		}
-	}
-	return result
-}
-
-type doNothingReduce struct{}
-
-func (r doNothingReduce) Func(nodes []RpcNode) []RpcNode {
-	return nodes
 }
 
 // To understand how interfaces work with GOB
 // look at research/gob_test.go TestInterfaceOverGob
-func TestFilter(t *testing.T) {
+func TestFilterReduceOp(t *testing.T) {
 	var err error
+	var worker common.RegisteredWorker
 	var grpId common.GRPID
-	worker := common.GetAvailRegWorkers()[0]
+	fruitesAndVeg := []string{
+		"apple",
+		"orange",
+		"lemon",
+		"peach",
+		"lettuce"}
 
-	// Data setup
-	if err = worker.Invoke(NEW, common.NONE{}, &grpId); err == nil {
-		testDatas := [][]byte{
-			[]byte("apple"),
-			[]byte("orange"),
-			[]byte("lemon"),
-			[]byte("peach"),
-			[]byte("lettuce"),
-		}
-		for _, testdata := range testDatas {
-			node := RpcNode{
-				Data:  testdata,
-				GrpID: grpId,
-				Uuid:  common.GenUUID(),
-			}
-			if err = worker.Invoke(INSERT, node, &common.NONE{}); err != nil {
-				t.FailNow()
-			}
-		}
+	// gen test data, if you get failure here make sure
+	// TestCreateRetrieve is passing before debugging futher
+	grpId, err = genTestNodes(fruitesAndVeg...)
+
+	// Test Filter
+	filter := Filter[vegetableFilter, string]{}
+	gob.Register(filter)
+	param := FuncParam{
+		Op:    &filter,
+		GrpId: grpId,
+	}
+	if worker, err = common.GetRandomAvailRegWorker(); err != nil {
+		t.Fatalf("obtain worker %s", err.Error())
+	}
+	if err = worker.Invoke(FILTER, &param, &common.NONE{}); err != nil {
+		t.Fatalf("Filter RPC call %s", err.Error())
 	}
 
-	// Test starts here
-
-	// register types for Functional Interface
-	gob.Register(vegetableFilter{})
-	gob.Register(doNothingReduce{})
-
-	param := FunctionParam{
-		GrpID:    grpId,
-		Function: &vegetableFilter{},
+	// reduce to get result
+	reduce := Reduce[countReducer, string, int]{}
+	gob.Register(reduce)
+	param = FuncParam{
+		Op:    &reduce,
+		GrpId: grpId,
 	}
-	// must pass ref to interface to work with GOB
-	if err = worker.Invoke(FILTER, &param, &common.NONE{}); err == nil {
-		param.Function = &doNothingReduce{}
-		var result []RpcNode
-		if err = worker.Invoke(REDUCE, &param, &result); err == nil {
-			if len(result) != 1 || !bytes.Equal(result[0].Data, []byte("lettuce")) {
-				t.Fail()
-			}
-		}
-		return // got here Test succeeded
+	var rpcCallResult []byte
+	if err = worker.Invoke(REDUCE, &param, &rpcCallResult); err != nil {
+		t.Fatalf("error %s", err.Error())
 	}
-
-	// got here , worker invokation failed
-	t.Fatalf("worker invoke failure %s", err.Error()) // got here
+	count, err := toType[int](rpcCallResult)
+	if err != nil {
+		t.Fatalf("conversion to int %s", err.Error())
+	}
+	if count != 1 {
+		t.Fatalf("count expected %d got %d", 1, count)
+	}
 }
