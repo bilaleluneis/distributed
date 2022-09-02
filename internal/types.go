@@ -5,9 +5,7 @@
 package internal
 
 import (
-	"bytes"
 	"distributed/common"
-	"encoding/gob"
 )
 
 type FunctionalOp interface {
@@ -27,8 +25,7 @@ func (f Filter[F, T]) Eval(rpcNodes []RpcNode) []RpcNode {
 	result := make([]RpcNode, 0)
 	for _, rpcNode := range rpcNodes {
 		n := Decode[T](rpcNode)
-		var node common.NodeLike[T] = &n[0]
-		if f.WithFilter.Filter(node) {
+		if f.WithFilter.Filter(n[0]) {
 			result = append(result, rpcNode)
 		}
 	}
@@ -43,10 +40,9 @@ func (r Reduce[R, T, O]) Eval(rpcNodes []RpcNode) []RpcNode {
 	nodes := Decode[T](rpcNodes...)
 	reductionList := make([]common.NodeLike[T], 0)
 	for _, n := range nodes {
-		var reductionNode common.NodeLike[T] = &n
-		reductionList = append(reductionList, reductionNode)
+		reductionList = append(reductionList, n)
 	}
-	return []RpcNode{Encode[O](&common.Node[O]{
+	return []RpcNode{Encode[O](common.Node[O]{
 		Data: r.WithReducer.Reduce(reductionList...),
 	})[0]}
 }
@@ -68,11 +64,9 @@ func (m Map[M, T]) Eval(rpcNodes []RpcNode) []RpcNode {
 func Encode[T any](nodes ...common.NodeLike[T]) []RpcNode {
 	result := make([]RpcNode, 0)
 	for _, n := range nodes {
-		var buffer bytes.Buffer
-		err := gob.NewEncoder(&buffer).Encode(n.GetData())
-		if err == nil {
+		if data, err := common.ToBytes[T](n.GetData()); err == nil {
 			result = append(result, RpcNode{
-				Data:   buffer.Bytes(),
+				Data:   data,
 				GrpID:  n.GetGrpID(),
 				Uuid:   n.GetUuID(),
 				Parent: n.GetParent(),
@@ -86,11 +80,7 @@ func Encode[T any](nodes ...common.NodeLike[T]) []RpcNode {
 func Decode[T any](rpcNodes ...RpcNode) []common.Node[T] {
 	result := make([]common.Node[T], 0)
 	for _, n := range rpcNodes {
-		var buffer bytes.Buffer
-		buffer.Write(n.Data)
-		var value T
-		err := gob.NewDecoder(&buffer).Decode(&value)
-		if err == nil {
+		if value, err := common.ToType[T](n.Data); err == nil {
 			result = append(result, common.Node[T]{
 				Data:   value,
 				GrpId:  n.GrpID,
