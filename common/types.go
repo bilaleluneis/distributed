@@ -16,7 +16,6 @@ type GRPID = string
 type Service = string
 type NONE = struct{}
 
-// TODO refactor API to use this instead of ""
 const (
 	EmptyGrpID = GRPID("")
 	EmptyUUID  = UUID("")
@@ -24,27 +23,32 @@ const (
 
 type NodeLike[T any] interface {
 	GetData() T
-	SetData(T)
-
 	GetGrpID() GRPID
-	SetGrpID(GRPID)
-
 	GetUuID() UUID
-	SetUuID(UUID)
-
 	GetParent() UUID
-	SetParent(UUID)
-
 	GetChild() UUID
-	SetChild(UUID)
 }
+
+type Node[T any] struct {
+	Data   T
+	GrpId  GRPID
+	Uuid   UUID
+	Parent UUID
+	Child  UUID
+}
+
+func (in Node[T]) GetData() T      { return in.Data }
+func (in Node[T]) GetGrpID() GRPID { return in.GrpId }
+func (in Node[T]) GetUuID() UUID   { return in.Uuid }
+func (in Node[T]) GetParent() UUID { return in.Parent }
+func (in Node[T]) GetChild() UUID  { return in.Child }
 
 type Filterer[T any] interface {
 	Filter(NodeLike[T]) bool
 }
 
 type Mapper[T any] interface {
-	Map(NodeLike[T]) NodeLike[T]
+	Map(NodeLike[T]) Node[T]
 }
 
 type Reducer[T any, R any] interface {
