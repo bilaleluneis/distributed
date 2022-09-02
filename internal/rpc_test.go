@@ -75,7 +75,8 @@ func TestFilterReduceOp(t *testing.T) {
 	grpId, err = genTestNodes(fruitesAndVeg...)
 
 	// Test Filter
-	filter := Filter[vegetableFilter, string]{}
+	filter := Filter[string]{vegetableFilter{}}
+	gob.Register(vegetableFilter{})
 	gob.Register(filter)
 	param := FuncParam{
 		Op:    &filter,
@@ -89,7 +90,8 @@ func TestFilterReduceOp(t *testing.T) {
 	}
 
 	// reduce to get result
-	reduce := Reduce[countReducer, string, int]{}
+	reduce := Reduce[string, int]{countReducer{}}
+	gob.Register(countReducer{})
 	gob.Register(reduce)
 	param = FuncParam{
 		Op:    &reduce,

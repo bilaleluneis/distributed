@@ -17,11 +17,11 @@ type FuncParam struct {
 	GrpId common.GRPID
 }
 
-type Filter[F common.Filterer[T], T any] struct {
-	WithFilter F
+type Filter[T any] struct {
+	WithFilter common.Filterer[T]
 }
 
-func (f Filter[F, T]) Eval(rpcNodes []RpcNode) []RpcNode {
+func (f Filter[T]) Eval(rpcNodes []RpcNode) []RpcNode {
 	result := make([]RpcNode, 0)
 	for _, rpcNode := range rpcNodes {
 		n := Decode[T](rpcNode)
@@ -32,26 +32,26 @@ func (f Filter[F, T]) Eval(rpcNodes []RpcNode) []RpcNode {
 	return result
 }
 
-type Reduce[R common.Reducer[T, O], T any, O any] struct {
-	WithReducer R
+type Reduce[T any, R any] struct {
+	WithReducer common.Reducer[T, R]
 }
 
-func (r Reduce[R, T, O]) Eval(rpcNodes []RpcNode) []RpcNode {
+func (r Reduce[T, R]) Eval(rpcNodes []RpcNode) []RpcNode {
 	nodes := Decode[T](rpcNodes...)
 	reductionList := make([]common.NodeLike[T], 0)
 	for _, n := range nodes {
 		reductionList = append(reductionList, n)
 	}
-	return []RpcNode{Encode[O](common.Node[O]{
+	return []RpcNode{Encode[R](common.Node[R]{
 		Data: r.WithReducer.Reduce(reductionList...),
 	})[0]}
 }
 
-type Map[M common.Mapper[T], T any] struct {
-	WithMapper M
+type Map[T any] struct {
+	WithMapper common.Mapper[T]
 }
 
-func (m Map[M, T]) Eval(rpcNodes []RpcNode) []RpcNode {
+func (m Map[T]) Eval(rpcNodes []RpcNode) []RpcNode {
 	result := make([]RpcNode, 0)
 	for _, rpcNode := range rpcNodes {
 		node := Decode[T](rpcNode)[0]
