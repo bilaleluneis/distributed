@@ -29,7 +29,7 @@ func TestFindNodeByUuid(t *testing.T) {
 	var grpId common.GRPID
 	var uuid common.UUID
 	var err error
-	var node Node[int]
+	var node common.Node[int]
 	value := 1
 
 	// NOTE: if failed here then check TestNewNode
@@ -52,7 +52,7 @@ func TestFindNodeByUuid(t *testing.T) {
 func TestFindNodesByValue(t *testing.T) {
 	var grpId common.GRPID
 	var err error
-	var nodes []Node[int]
+	var nodes []common.Node[int]
 	values := []int{2, 3, 4, 2, 6, 7, 8, 9, 2}
 
 	// Setup Test Data
@@ -88,7 +88,7 @@ func TestUpdateNode(t *testing.T) {
 	}
 
 	// Test Update
-	err = UpdateNode[int](Node[int]{
+	err = UpdateNode[int](common.Node[int]{
 		GrpId: grpId,
 		Uuid:  uuid,
 		Data:  2,
@@ -110,7 +110,7 @@ func TestUpdateNode(t *testing.T) {
 func TestDeleteNodes(t *testing.T) {
 	var grpId common.GRPID
 	var err error
-	var nodes []Node[int]
+	var nodes []common.Node[int]
 	values := []int{2, 3, 4, 2, 6, 7, 8, 9, 2}
 
 	// Setup Test Data
@@ -127,7 +127,7 @@ func TestDeleteNodes(t *testing.T) {
 		uuids = append(uuids, node.Uuid)
 	}
 
-	// Test Delete
+	//Test Delete
 	err = DeleteNodes(uuids, grpId)
 	if err != nil {
 		t.Fatalf("delete nodes failed due %s", err.Error())

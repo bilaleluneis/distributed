@@ -5,38 +5,23 @@
 package datastructure
 
 import (
-	"bytes"
 	"distributed/common"
 	"distributed/internal"
-	"encoding/gob"
-	"fmt"
 )
 
-//TODO: refactor to use NodeID type
-
-type Node[T any] struct {
-	Data   T
-	GrpId  common.GRPID
-	Uuid   common.UUID
-	Parent common.UUID
-	Child  common.UUID
-}
-
-func (n Node[T]) String() string {
-	rep := "Node[T]: grpId=%s uuid=%s parent=%s child=%s"
-	return fmt.Sprintf(rep, n.GrpId, n.Uuid, n.Parent, n.Child)
-}
-
 // UpdateNode will update existing node provided GRP ID and UUID
+// via finding, deleting then inserting again
 // TODO: no very performant impl as I am making 3 calls on all workers
-// find, delete and insert
-func UpdateNode[T any](withNode Node[T]) error {
+func UpdateNode[T any](withNode common.NodeLike[T]) error {
 	var err error
 	// find first if node with GRP ID and UUID exist
-	if _, err = FindNodeByUuid[T](withNode.Uuid, withNode.GrpId); err == nil {
-		if err = DeleteNodes([]common.UUID{withNode.Uuid}, withNode.GrpId); err == nil {
-			if updatedNode := encode[T]([]Node[T]{withNode}); len(updatedNode) != 0 {
-				err = common.GetRandomAvailRegWorker().Invoke(internal.INSERT, updatedNode[0], &common.NONE{})
+	if _, err = FindNodeByUuid[T](withNode.GetUuID(), withNode.GetGrpID()); err == nil {
+		if err = DeleteNodes([]common.UUID{withNode.GetUuID()}, withNode.GetGrpID()); err == nil {
+			if updatedNode := internal.Encode[T](withNode); len(updatedNode) != 0 {
+				var worker common.RegisteredWorker
+				if worker, err = common.GetRandomAvailRegWorker(); err == nil {
+					err = worker.Invoke(internal.INSERT, updatedNode[0], &common.NONE{})
+				}
 			}
 		}
 	}
@@ -44,7 +29,7 @@ func UpdateNode[T any](withNode Node[T]) error {
 }
 
 func DeleteNodes(uuids []common.UUID, forGrp common.GRPID) error {
-	if forGrp == "" {
+	if forGrp == common.EmptyGrpID {
 		return common.ReqGrpIdErr
 	}
 	if len(uuids) == 0 {
@@ -62,32 +47,31 @@ func DeleteNodes(uuids []common.UUID, forGrp common.GRPID) error {
 }
 
 // FindNodeByUuid assumption here is that there should be one node only with that match uuid
-func FindNodeByUuid[T any](uuid common.UUID, forGrp common.GRPID) (Node[T], error) {
+func FindNodeByUuid[T any](uuid common.UUID, forGrp common.GRPID) (common.Node[T], error) {
 	searchParam := internal.RpcNode{
 		GrpID: forGrp,
 		Uuid:  uuid,
 	}
 	nodesFound := retrieveFromWorkers[T](searchParam)
 	if len(nodesFound) == 0 {
-		return Node[T]{}, common.NoResultsErr
+		return common.Node[T]{}, common.NoResultsErr
 	}
 	if len(nodesFound) > 1 {
-		return Node[T]{}, common.MultipleMatchErr
+		return common.Node[T]{}, common.MultipleMatchErr
 	}
 	return nodesFound[0], nil
 }
 
-func FindNodesByValue[T any](data T, forGroup common.GRPID) ([]Node[T], error) {
-	var result []Node[T]
+func FindNodesByValue[T any](value T, forGroup common.GRPID) ([]common.Node[T], error) {
 	var err error
-	buffer := bytes.NewBuffer([]byte{})
-	err = gob.NewEncoder(buffer).Encode(data)
-	if err != nil {
-		return make([]Node[T], 0), err
+	var bytesVal []byte
+	result := make([]common.Node[T], 0)
+	if bytesVal, err = common.ToBytes[T](value); err != nil {
+		return result, err
 	}
 	searchParam := internal.RpcNode{
 		GrpID: forGroup,
-		Data:  buffer.Bytes(),
+		Data:  bytesVal,
 	}
 	if result = retrieveFromWorkers[T](searchParam); len(result) == 0 {
 		err = common.NoResultsErr
@@ -99,6 +83,7 @@ func NewNode[T any](withVal T, inGrp common.GRPID) (common.GRPID, common.UUID, e
 	grpId := inGrp
 	var uuid common.UUID
 	var err error
+	var worker common.RegisteredWorker
 
 	workers := common.GetAvailRegWorkers()
 	if len(workers) == 0 {
@@ -113,35 +98,32 @@ func NewNode[T any](withVal T, inGrp common.GRPID) (common.GRPID, common.UUID, e
 		return grpId, uuid, err
 	}
 	// persist node
-	node := Node[T]{
+	node := common.Node[T]{
 		Data:  withVal,
 		GrpId: grpId,
 		Uuid:  uuid,
 	}
-	if rpcNodes := encode[T]([]Node[T]{node}); len(rpcNodes) != 0 {
-		worker := common.GetRandomAvailRegWorker()
-		rpcNode := rpcNodes[0]
-		err = worker.Invoke(internal.INSERT, rpcNode, &common.NONE{})
+	if rpcNodes := internal.Encode[T](node); len(rpcNodes) != 0 {
+		if worker, err = common.GetRandomAvailRegWorker(); err != nil {
+			return common.EmptyGrpID, common.EmptyUUID, err
+		}
+		if err = worker.Invoke(internal.INSERT, rpcNodes[0], &common.NONE{}); err != nil {
+			return common.EmptyGrpID, common.EmptyUUID, err
+		}
 	}
-
 	return grpId, uuid, err
 }
 
 // calls Retrieve internal.rpc on all workers and return slice of found results
 // workers that return error on call will be skipped for result
 // TODO: consider using channels and goroutines/ async calls
-func retrieveFromWorkers[T any](searchParm internal.RpcNode) []Node[T] {
-	result := make([]Node[T], 0)
+func retrieveFromWorkers[T any](searchParm internal.RpcNode) []common.Node[T] {
+	var result []common.Node[T]
 	workers := common.GetAvailRegWorkers()
+	nodesFound := make([]internal.RpcNode, 0)
 	for _, worker := range workers {
-		nodesFound := make([]internal.RpcNode, 0)
-		err := worker.Invoke(internal.RETRIEVE, searchParm, &nodesFound)
-		if err == nil {
-			for _, n := range nodesFound {
-				if ndec := decode[T]([]internal.RpcNode{n}); len(ndec) != 0 {
-					result = append(result, ndec[0])
-				}
-			}
+		if err := worker.Invoke(internal.RETRIEVE, searchParm, &nodesFound); err == nil {
+			result = append(result, internal.Decode[T](nodesFound...)...)
 		}
 	}
 	return result
@@ -155,7 +137,7 @@ genID:
 		var exist bool
 		err = worker.Invoke(internal.GRPIDEXIST, grpId, &exist)
 		if err != nil {
-			return "", err
+			return common.EmptyGrpID, err
 		}
 		if exist {
 			goto genID
@@ -179,39 +161,4 @@ genID:
 		}
 	}
 	return uuid, nil
-}
-
-func encode[T any](nodes []Node[T]) []internal.RpcNode {
-	result := make([]internal.RpcNode, 0)
-	for _, n := range nodes {
-		var buffer bytes.Buffer
-		err := gob.NewEncoder(&buffer).Encode(n.Data)
-		if err == nil {
-			result = append(result, internal.RpcNode{
-				Data:   buffer.Bytes(),
-				GrpID:  n.GrpId,
-				Uuid:   n.Uuid,
-				Parent: n.Parent,
-				Child:  n.Child,
-			})
-		}
-	}
-	return result
-}
-
-func decode[T any](rpcNodes []internal.RpcNode) []Node[T] {
-	result := make([]Node[T], 0)
-	for _, n := range rpcNodes {
-		var node Node[T]
-		buffer := bytes.NewBuffer(n.Data)
-		err := gob.NewDecoder(buffer).Decode(&node.Data)
-		if err == nil {
-			node.GrpId = n.GrpID
-			node.Uuid = n.Uuid
-			node.Parent = n.Parent
-			node.Child = n.Child
-			result = append(result, node)
-		}
-	}
-	return result
 }
