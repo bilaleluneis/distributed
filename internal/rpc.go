@@ -15,8 +15,8 @@ const (
 	INSERT     = common.Service("RpcNodeService.Insert")
 	RETRIEVE   = common.Service("RpcNodeService.Retrieve")
 	DELETE     = common.Service("RpcNodeService.Delete")
-	FILTER     = common.Service("RpcNodeService.Filter")
-	REDUCE     = common.Service("RpcNodeService.Reduce")
+	DELAYED    = common.Service("RpcNodeService.Delayed")
+	IMMEDIATE  = common.Service("RpcNodeService.Immediate")
 	GRPIDEXIST = common.Service("RpcNodeService.GrpIdExist")
 )
 
@@ -179,7 +179,8 @@ func (rns RpcNodeService) Retrieve(criteria RpcNode, result *[]RpcNode) error {
 	return nil
 }
 
-func (rns *RpcNodeService) Filter(by FuncParam, _ *common.NONE) error {
+// Delayed will store functional operation but not evaluate (lazy eval)
+func (rns *RpcNodeService) Delayed(by FuncParam, _ *common.NONE) error {
 	if by.GrpId == common.EmptyGrpID {
 		return common.ReqGrpIdErr
 	}
@@ -193,20 +194,27 @@ func (rns *RpcNodeService) Filter(by FuncParam, _ *common.NONE) error {
 	return nil
 }
 
-// Reduce assumption here is that FuncParam will hold Reduce Type
-// TODO: need to check i Op is of type Reduce
-func (rns *RpcNodeService) Reduce(by FuncParam, result *[]byte) error {
+// Immediate will eager eval functional operations store if any then
+// evaluate functional operation passed and return result
+func (rns *RpcNodeService) Immediate(by FuncParam, result *[]byte) error {
 	grpId := by.GrpId
 	var validGrpId bool
+	var err error
 	if _ = rns.GrpIdExist(grpId, &validGrpId); validGrpId {
-		defer delete(rns.ops, grpId)
 		currData := rns.nodes[grpId]
-		for _, f := range rns.ops[grpId] {
-			currData = f.Eval(currData)
+		// evaluate previously delayed ops if any
+		if ops, ok := rns.ops[grpId]; ok {
+			defer delete(rns.ops, grpId) // clear all stored ops once done
+			for _, f := range ops {
+				currData = f.Eval(currData)
+			}
 		}
-		reduction := by.Op.Eval(currData)
-		*result = reduction[0].Data
-		return nil
+		// evaluate current operation and store results as bytes
+		var evalAsBytes []byte
+		if evalAsBytes, err = common.ToBytes(by.Op.Eval(currData)); err == nil {
+			*result = evalAsBytes
+		}
+		return err
 	}
 	return common.DoesNotExistGrpIdErr
 }

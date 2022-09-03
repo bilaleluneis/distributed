@@ -17,6 +17,12 @@ type FuncParam struct {
 	GrpId common.GRPID
 }
 
+type Compute struct{}
+
+func (Compute) Eval(rpcNodes []RpcNode) []RpcNode {
+	return rpcNodes
+}
+
 type Filter[T any] struct {
 	WithFilter common.Filterer[T]
 }

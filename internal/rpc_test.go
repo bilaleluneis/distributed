@@ -59,16 +59,21 @@ func TestCreateRetrieve(t *testing.T) {
 
 // To understand how interfaces work with GOB
 // look at research/gob_test.go TestInterfaceOverGob
-func TestFilterReduceOp(t *testing.T) {
+func TestFilter(t *testing.T) {
 	var err error
 	var worker common.RegisteredWorker
 	var grpId common.GRPID
+	var rpcNodes []RpcNode
 	fruitesAndVeg := []string{
 		"apple",
 		"orange",
 		"lemon",
 		"peach",
 		"lettuce"}
+
+	if worker, err = common.GetRandomAvailRegWorker(); err != nil {
+		t.Fatalf("obtain worker %s", err.Error())
+	}
 
 	// gen test data, if you get failure here make sure
 	// TestCreateRetrieve is passing before debugging futher
@@ -82,30 +87,18 @@ func TestFilterReduceOp(t *testing.T) {
 		Op:    &filter,
 		GrpId: grpId,
 	}
-	if worker, err = common.GetRandomAvailRegWorker(); err != nil {
-		t.Fatalf("obtain worker %s", err.Error())
+	var byteResult []byte
+	if err = worker.Invoke(IMMEDIATE, &param, &byteResult); err != nil {
+		t.Fatalf("filter call %s", err.Error())
 	}
-	if err = worker.Invoke(FILTER, &param, &common.NONE{}); err != nil {
-		t.Fatalf("Filter RPC call %s", err.Error())
+	if rpcNodes, err = common.ToType[[]RpcNode](byteResult); err != nil {
+		t.Fatalf("convertion from []byts to []RpcNode %s", err.Error())
 	}
-
-	// reduce to get result
-	reduce := Reduce[string, int]{countReducer{}}
-	gob.Register(countReducer{})
-	gob.Register(reduce)
-	param = FuncParam{
-		Op:    &reduce,
-		GrpId: grpId,
+	nodes := Decode[string](rpcNodes...)
+	if len(nodes) != 1 {
+		t.Fatalf("wrong number of result")
 	}
-	var rpcCallResult []byte
-	if err = worker.Invoke(REDUCE, &param, &rpcCallResult); err != nil {
-		t.Fatalf("error %s", err.Error())
-	}
-	count, err := common.ToType[int](rpcCallResult)
-	if err != nil {
-		t.Fatalf("conversion to int %s", err.Error())
-	}
-	if count != 1 {
-		t.Fatalf("count expected %d got %d", 1, count)
+	if result := nodes[0].Data; result != "lettuce" {
+		t.Fatalf("wrong filter size or data")
 	}
 }
