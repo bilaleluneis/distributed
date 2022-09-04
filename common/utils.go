@@ -38,3 +38,21 @@ func ToType[T any](data []byte) (T, error) {
 	err := gob.NewDecoder(&buffer).Decode(&result)
 	return result, err
 }
+
+// Contains check if value exist in slice
+// and number of times it appears
+func Contains[T any](in []T, val T) (int, bool) {
+	var exist bool
+	var count int
+	if v, err := ToBytes[T](val); err == nil {
+		for _, item := range in {
+			if i, err := ToBytes[T](item); err == nil {
+				if bytes.Equal(i, v) {
+					exist = true
+					count++
+				}
+			}
+		}
+	}
+	return count, exist
+}
