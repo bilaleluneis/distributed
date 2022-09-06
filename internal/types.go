@@ -23,6 +23,13 @@ func (Compute) Eval(rpcNodes []RpcNode) []RpcNode {
 	return rpcNodes
 }
 
+// will be used to clear the FunctionalOp list when errors occur
+type purge struct{}
+
+func (purge) Eval(rpcNodes []RpcNode) []RpcNode {
+	return []RpcNode{}
+}
+
 type Filter[T any] struct {
 	WithFilter common.Filterer[T]
 }

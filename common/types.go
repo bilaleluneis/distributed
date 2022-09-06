@@ -29,6 +29,11 @@ type NodeLike[T any] interface {
 	GetChild() UUID
 }
 
+type Collection interface {
+	Len() int
+	Identity() GRPID
+}
+
 type Node[T any] struct {
 	Data   T
 	GrpId  GRPID
