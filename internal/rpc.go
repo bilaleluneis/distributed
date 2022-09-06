@@ -196,7 +196,7 @@ func (rns *RpcNodeService) Delayed(by FuncParam, _ *common.NONE) error {
 
 // Immediate will eager eval functional operations store if any then
 // evaluate functional operation passed and return result
-func (rns *RpcNodeService) Immediate(by FuncParam, result *[]byte) error {
+func (rns *RpcNodeService) Immediate(by FuncParam, result *[]RpcNode) error {
 	grpId := by.GrpId
 	var validGrpId bool
 	var err error
@@ -210,10 +210,7 @@ func (rns *RpcNodeService) Immediate(by FuncParam, result *[]byte) error {
 			}
 		}
 		// evaluate current operation and store results as bytes
-		var evalAsBytes []byte
-		if evalAsBytes, err = common.ToBytes(by.Op.Eval(currData)); err == nil {
-			*result = evalAsBytes
-		}
+		*result = by.Op.Eval(currData)
 		return err
 	}
 	return common.DoesNotExistGrpIdErr

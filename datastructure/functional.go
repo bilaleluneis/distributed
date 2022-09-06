@@ -14,78 +14,48 @@ func Filter[T any](c common.Collection, f common.Filterer[T]) error {
 	filter := internal.Filter[T]{WithFilter: f}
 	gob.Register(f)
 	gob.Register(filter)
-	param := internal.FuncParam{
-		GrpId: c.Identity(),
-		Op:    filter,
-	}
-	workers := common.GetAvailRegWorkers()
-	for _, worker := range workers {
-		if err := worker.Invoke(internal.DELAYED, &param, &common.NONE{}); err != nil {
-			return FILTEROPERR //TODO use purge on workers to clean up
-		}
+	if err := delayedEval(filter, c.Identity()); err != nil {
+		return FILTEROPERR
 	}
 	return nil
 }
 
 func Map[T any, R any](c common.Collection, m common.Mapper[T, R]) error {
-	maper := internal.Map[T, R]{WithMapper: m}
+	mapper := internal.Map[T, R]{WithMapper: m}
 	gob.Register(m)
-	gob.Register(maper)
-	param := internal.FuncParam{
-		GrpId: c.Identity(),
-		Op:    maper,
-	}
-	workers := common.GetAvailRegWorkers()
-	for _, worker := range workers {
-		if err := worker.Invoke(internal.DELAYED, &param, &common.NONE{}); err != nil {
-			return MAPOPERR //TODO use purge on workers to clean up
-		}
+	gob.Register(mapper)
+	if err := delayedEval(mapper, c.Identity()); err != nil {
+		return MAPOPERR
 	}
 	return nil
 }
 
 func Reduce[T any, R any](c common.Collection, r common.Reducer[T, R], finalReduct func([]R) R) (R, error) {
 	var err error
+	var result R
+	var workersResult []internal.RpcNode
 	reduce := internal.Reduce[T, R]{WithReducer: r}
 	gob.Register(r)
 	gob.Register(reduce)
-	param := internal.FuncParam{
-		Op:    reduce,
-		GrpId: c.Identity(),
-	}
-	workers := common.GetAvailRegWorkers()
 
-	// capture reduction result from each worker and place into slice
-	workersRedResult := make([]internal.RpcNode, 0)
-	for _, worker := range workers {
-		var currWorkerReduct []byte
-		if err = worker.Invoke(internal.IMMEDIATE, &param, &currWorkerReduct); err == nil {
-			var toRpcNodes []internal.RpcNode
-			if toRpcNodes, err = common.ToType[[]internal.RpcNode](currWorkerReduct); err == nil {
-				workersRedResult = append(workersRedResult, toRpcNodes...)
-			}
-		}
-	}
-
-	var result R
-	if err != nil {
+	if workersResult, err = eagerEval(reduce, c.Identity()); err != nil {
 		return result, err
 	}
 
-	switch len(workersRedResult) {
+	switch len(workersResult) {
 	case 0:
 		return result, REDUCEOPERR
 	case 1:
-		result, err = common.ToType[R](workersRedResult[0].Data)
+		result, err = common.ToType[R](workersResult[0].Data)
 	default:
 		intermReduction := make([]R, 0)
-		for _, cr := range workersRedResult {
+		for _, cr := range workersResult {
 			var r R
-			r, err = common.ToType[R](cr.Data)
-			if err != nil {
+			if r, err = common.ToType[R](cr.Data); err == nil {
+				intermReduction = append(intermReduction, r)
+			} else {
 				return result, err
 			}
-			intermReduction = append(intermReduction, r)
 		}
 		result = finalReduct(intermReduction)
 	}
@@ -95,27 +65,12 @@ func Reduce[T any, R any](c common.Collection, r common.Reducer[T, R], finalRedu
 
 func Compute[T any](c common.Collection) ([]T, error) {
 	var err error
+	var computeResult []internal.RpcNode
 	compute := internal.Compute{}
 	gob.Register(compute)
-	param := internal.FuncParam{
-		GrpId: c.Identity(),
-		Op:    compute,
-	}
 
-	workers := common.GetAvailRegWorkers()
-	computeResult := make([]internal.RpcNode, 0)
-	for _, worker := range workers {
-		var tmp []byte
-		if err = worker.Invoke(internal.IMMEDIATE, &param, &tmp); err == nil {
-			var result []internal.RpcNode
-			if result, err = common.ToType[[]internal.RpcNode](tmp); err == nil {
-				computeResult = append(computeResult, result...)
-			}
-		}
-	}
-
-	if err != nil {
-		return []T{}, COMPUTEOPERR
+	if computeResult, err = eagerEval(compute, c.Identity()); err != nil {
+		return []T{}, err
 	}
 
 	result := make([]T, 0)
@@ -124,13 +79,43 @@ func Compute[T any](c common.Collection) ([]T, error) {
 			var r T
 			if r, err = common.ToType[T](cr.Data); err == nil {
 				result = append(result, r)
+			} else {
+				return []T{}, err
 			}
 		}
 	}
 
-	if err != nil {
-		return []T{}, COMPUTEOPERR
-	}
-
 	return result, nil
+}
+
+func eagerEval(fop internal.FunctionalOp, forGrp common.GRPID) ([]internal.RpcNode, error) {
+	param := internal.FuncParam{
+		Op:    fop,
+		GrpId: forGrp,
+	}
+	workers := common.GetAvailRegWorkers()
+	result := make([]internal.RpcNode, 0)
+	for _, worker := range workers {
+		var currWorkerReduct []internal.RpcNode
+		if err := worker.Invoke(internal.IMMEDIATE, &param, &currWorkerReduct); err == nil {
+			result = append(result, currWorkerReduct...)
+		} else {
+			return []internal.RpcNode{}, err
+		}
+	}
+	return result, nil
+}
+
+func delayedEval(fop internal.FunctionalOp, forGrp common.GRPID) error {
+	param := internal.FuncParam{
+		GrpId: forGrp,
+		Op:    fop,
+	}
+	workers := common.GetAvailRegWorkers()
+	for _, worker := range workers {
+		if err := worker.Invoke(internal.DELAYED, &param, &common.NONE{}); err != nil {
+			return err
+		}
+	}
+	return nil
 }

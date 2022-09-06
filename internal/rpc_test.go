@@ -63,7 +63,6 @@ func TestFilter(t *testing.T) {
 	var err error
 	var worker common.RegisteredWorker
 	var grpId common.GRPID
-	var rpcNodes []RpcNode
 	fruitesAndVeg := []string{
 		"apple",
 		"orange",
@@ -87,14 +86,11 @@ func TestFilter(t *testing.T) {
 		Op:    &filter,
 		GrpId: grpId,
 	}
-	var byteResult []byte
-	if err = worker.Invoke(IMMEDIATE, &param, &byteResult); err != nil {
+	var result []RpcNode
+	if err = worker.Invoke(IMMEDIATE, &param, &result); err != nil {
 		t.Fatalf("filter call %s", err.Error())
 	}
-	if rpcNodes, err = common.ToType[[]RpcNode](byteResult); err != nil {
-		t.Fatalf("convertion from []byts to []RpcNode %s", err.Error())
-	}
-	nodes := Decode[string](rpcNodes...)
+	nodes := Decode[string](result...)
 	if len(nodes) != 1 {
 		t.Fatalf("wrong number of result")
 	}
