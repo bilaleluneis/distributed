@@ -53,16 +53,16 @@ func (r Reduce[T, R]) Eval(rpcNodes []RpcNode) []RpcNode {
 	})[0]}
 }
 
-type Map[T any] struct {
-	WithMapper common.Mapper[T]
+type Map[T any, R any] struct {
+	WithMapper common.Mapper[T, R]
 }
 
-func (m Map[T]) Eval(rpcNodes []RpcNode) []RpcNode {
+func (m Map[T, R]) Eval(rpcNodes []RpcNode) []RpcNode {
 	result := make([]RpcNode, 0)
 	for _, rpcNode := range rpcNodes {
 		node := Decode[T](rpcNode)[0]
 		mappedNode := m.WithMapper.Map(&node)
-		result = append(result, Encode[T](mappedNode)[0])
+		result = append(result, Encode[R](mappedNode)[0])
 	}
 	return result
 }

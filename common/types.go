@@ -51,8 +51,8 @@ type Filterer[T any] interface {
 	Filter(NodeLike[T]) bool
 }
 
-type Mapper[T any] interface {
-	Map(NodeLike[T]) Node[T]
+type Mapper[T any, R any] interface {
+	Map(NodeLike[T]) Node[R]
 }
 
 type Reducer[T any, R any] interface {

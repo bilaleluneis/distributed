@@ -14,16 +14,6 @@ func (fi vegetableFilter) Filter(item common.NodeLike[string]) bool {
 	return item.GetData() == "lettuce"
 }
 
-type countReducer struct{}
-
-func (cr countReducer) Reduce(items ...common.NodeLike[string]) int {
-	counter := 0
-	for range items {
-		counter++
-	}
-	return counter
-}
-
 // Utils
 
 func genTestNodes[T any](data ...T) (common.GRPID, error) {
