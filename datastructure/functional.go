@@ -7,13 +7,10 @@ package datastructure
 import (
 	"distributed/common"
 	"distributed/internal"
-	"encoding/gob"
 )
 
 func Filter[T any](c common.Collection, f common.Filterer[T]) error {
 	filter := internal.Filter[T]{WithFilter: f}
-	gob.Register(f)
-	gob.Register(filter)
 	if err := delayedEval(filter, c.Identity()); err != nil {
 		return FILTEROPERR
 	}
@@ -22,8 +19,6 @@ func Filter[T any](c common.Collection, f common.Filterer[T]) error {
 
 func Map[T any, R any](c common.Collection, m common.Mapper[T, R]) error {
 	mapper := internal.Map[T, R]{WithMapper: m}
-	gob.Register(m)
-	gob.Register(mapper)
 	if err := delayedEval(mapper, c.Identity()); err != nil {
 		return MAPOPERR
 	}
@@ -35,8 +30,6 @@ func Reduce[T any, R any](c common.Collection, r common.Reducer[T, R], finalRedu
 	var result R
 	var workersResult []internal.RpcNode
 	reduce := internal.Reduce[T, R]{WithReducer: r}
-	gob.Register(r)
-	gob.Register(reduce)
 
 	if workersResult, err = eagerEval(reduce, c.Identity()); err != nil {
 		return result, err
@@ -67,7 +60,6 @@ func Compute[T any](c common.Collection) ([]T, error) {
 	var err error
 	var computeResult []internal.RpcNode
 	compute := internal.Compute{}
-	gob.Register(compute)
 
 	if computeResult, err = eagerEval(compute, c.Identity()); err != nil {
 		return []T{}, err

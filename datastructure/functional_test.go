@@ -5,9 +5,20 @@
 package datastructure
 
 import (
+	"distributed"
 	"distributed/common"
+	"distributed/internal"
+	"encoding/gob"
 	"testing"
 )
+
+// FIXME: remove init once functional types are handeled diff for GOB
+func init() {
+	gob.Register(internal.Compute{})
+	distributed.RegisterFilter[int](valueFilter{})
+	distributed.RegisterMapper[int, int](valueMapper{})
+	distributed.RegisterReducer[int, int](sumReducer{})
+}
 
 func TestCompute(t *testing.T) {
 	values := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
