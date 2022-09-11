@@ -30,7 +30,7 @@ func TestCreation(t *testing.T) {
 }
 
 func TestFailedPush(t *testing.T) {
-	l := LinkedList[int]{}
+	l := List[int]{}
 	if err := l.Push(1); err != common.CollectionNotInitedErr {
 		t.Fail()
 	}

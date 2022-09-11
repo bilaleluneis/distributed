@@ -15,18 +15,18 @@ const (
 	COMPUTEOPERR = common.Error("compute operation failure")
 )
 
-type LinkedList[T any] struct {
+type List[T any] struct {
 	size       int
 	identifier common.GRPID
 	root       common.UUID
 }
 
-func (ll LinkedList[T]) Identity() common.GRPID {
-	return ll.identifier
+func (list List[T]) Identity() common.GRPID {
+	return list.identifier
 }
 
-func (ll LinkedList[T]) Len() int {
-	return ll.size
+func (list List[T]) Len() int {
+	return list.size
 }
 
 // Push will push new node on top, this allows for
@@ -34,48 +34,49 @@ func (ll LinkedList[T]) Len() int {
 // new node with with child = current root
 // and updating current list root to be the
 // newly created node
-func (ll *LinkedList[T]) Push(val T) error {
+func (list *List[T]) Push(val T) error {
 	// empty identifier = list was not correclty created
-	if ll.identifier == common.EmptyGrpID {
+	if list.identifier == common.EmptyGrpID {
 		return common.CollectionNotInitedErr
 	}
 
 	var err error
 	// this newly created list
-	if ll.size == 0 {
+	if list.size == 0 {
 		node := common.Node[T]{
 			Data:  val,
-			GrpId: ll.identifier,
-			Uuid:  ll.root,
+			GrpId: list.identifier,
+			Uuid:  list.root,
 		}
 		if err = UpdateNode[T](node); err == nil {
-			ll.size++
+			list.size++
 		}
 		return err
 	}
 
 	// not newly created list, so push on top
 	var uuid common.UUID
-	if _, uuid, err = NewNode(val, ll.identifier); err == nil {
+	if _, uuid, err = NewNode(val, list.identifier); err == nil {
 		node := common.Node[T]{
 			Data:  val,
-			GrpId: ll.identifier,
+			GrpId: list.identifier,
 			Uuid:  uuid,
-			Child: ll.root,
+			Child: list.root,
 		}
 		if err = UpdateNode[T](node); err == nil {
-			ll.root = node.Uuid
-			ll.size++
+			list.root = node.Uuid
+			list.size++
 		}
 	}
 
 	return err
 }
 
-func NewLinkedList[T any]() (LinkedList[T], error) {
+// NewLinkedList FIXME: do not need this as vargs version takes 0 or more
+func NewLinkedList[T any]() (List[T], error) {
 	var emptyVal T
 	grpId, uuid, err := NewNode(emptyVal, common.EmptyGrpID)
-	var linkedList LinkedList[T]
+	var linkedList List[T]
 	if err == nil {
 		linkedList.identifier = grpId
 		linkedList.root = uuid
@@ -83,11 +84,11 @@ func NewLinkedList[T any]() (LinkedList[T], error) {
 	return linkedList, err
 }
 
-func NewLinkedListWithValues[T any](values ...T) (LinkedList[T], error) {
+func NewLinkedListWithValues[T any](values ...T) (List[T], error) {
 	linkedList, err := NewLinkedList[T]()
 	for _, value := range values {
 		if err = linkedList.Push(value); err != nil {
-			return LinkedList[T]{}, err
+			return List[T]{}, err
 		}
 	}
 	return linkedList, err

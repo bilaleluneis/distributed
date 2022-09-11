@@ -11,7 +11,7 @@ import (
 
 // UpdateNode will update existing node provided GRP ID and UUID
 // via finding, deleting then inserting again
-// TODO: no very performant impl as I am making 3 calls on all workers
+// FIXME: no very performant impl as I am making 3 calls on all workers
 func UpdateNode[T any](withNode common.NodeLike[T]) error {
 	var err error
 	// find first if node with GRP ID and UUID exist

@@ -39,7 +39,6 @@ type RpcNodeService struct {
 // New returns an available Group ID on this worker
 // the client is responsible for making sure that this
 // Group I D does not already exist on other workers
-// TODO: might not need this method if I do GRPID generation on client side
 func (rns *RpcNodeService) New(_ common.NONE, grpId *common.GRPID) error {
 	id := common.GenUUID()
 	for _, ok := rns.nodes[id]; ok; {
@@ -93,7 +92,6 @@ func (rns *RpcNodeService) Insert(node RpcNode, _ *common.NONE) error {
 		return common.ReqUuidErr
 	}
 	grpId, uuid := node.GrpID, node.Uuid
-	//TODO: can I use channels and goroutine here?
 	for index, currNode := range rns.nodes[grpId] {
 		if currNode.GrpID == grpId && currNode.Uuid == uuid {
 			rns.nodes[grpId][index] = node
@@ -129,7 +127,6 @@ func (rns *RpcNodeService) Delete(nodesToDel []RpcNode, _ *common.NONE) error {
 	return nil
 }
 
-// TODO: might want to use go routines if len(from) is larger than some value
 func found(node RpcNode, from []RpcNode) bool {
 	for _, n := range from {
 		if node.GrpID == n.GrpID && node.Uuid == n.Uuid {
@@ -143,7 +140,6 @@ func found(node RpcNode, from []RpcNode) bool {
 // and return slice with results matching criteria
 // criteria.GrpID is manadatory, the rest are optional
 // TODO: consider using go routines to search faster
-// FIXME: for now just checking against data and uuid, impl is slow
 func (rns RpcNodeService) Retrieve(criteria RpcNode, result *[]RpcNode) error {
 	if criteria.GrpID == common.EmptyGrpID {
 		return common.ReqGrpIdErr
