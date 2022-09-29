@@ -11,16 +11,21 @@ import (
 
 func TestCreation(t *testing.T) {
 	// creating an Empty list
-	list, err := NewLinkedList[int]()
+	list, err := newEmptyList[int]()
 	if err != nil {
-		t.Fatal("creating new linked list failed")
+		t.Fatal("creating new list failed")
 	}
 	if list.Len() != 0 {
 		t.Fatalf("expected list size to be 0 got %d", list.Len())
 	}
+}
 
+// FIXME:
+// Debug this Test, I am seeing rpc.insert getting called
+// double the number of items inserted
+func TestCreationWithValues(t *testing.T) {
 	// creating list with initial values
-	list, err = NewLinkedListWithValues(1, 2, 3, 4)
+	list, err := NewList(1, 2, 3, 4)
 	if err != nil {
 		t.Fatal("failed creating list with initial values")
 	}
@@ -39,7 +44,7 @@ func TestFailedPush(t *testing.T) {
 // NOTE: before debugging failure in this test
 // make sure TestLinkedListCreation passes
 func TestSuccessfulPush(t *testing.T) {
-	l, _ := NewLinkedList[int]()
+	l, _ := newEmptyList[int]()
 	if err := l.Push(1); err != nil {
 		t.Fatalf("push with error %s", err.Error())
 	}

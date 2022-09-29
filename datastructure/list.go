@@ -8,13 +8,6 @@ import (
 	"distributed/common"
 )
 
-const (
-	FILTEROPERR  = common.Error("filter operation failure")
-	MAPOPERR     = common.Error("map operation failure")
-	REDUCEOPERR  = common.Error("reduce operation failure")
-	COMPUTEOPERR = common.Error("compute operation failure")
-)
-
 type List[T any] struct {
 	size       int
 	identifier common.GRPID
@@ -72,24 +65,23 @@ func (list *List[T]) Push(val T) error {
 	return err
 }
 
-// NewLinkedList FIXME: do not need this as vargs version takes 0 or more
-func NewLinkedList[T any]() (List[T], error) {
+func newEmptyList[T any]() (List[T], error) {
 	var emptyVal T
 	grpId, uuid, err := NewNode(emptyVal, common.EmptyGrpID)
-	var linkedList List[T]
+	var l List[T]
 	if err == nil {
-		linkedList.identifier = grpId
-		linkedList.root = uuid
+		l.identifier = grpId
+		l.root = uuid
 	}
-	return linkedList, err
+	return l, err
 }
 
-func NewLinkedListWithValues[T any](values ...T) (List[T], error) {
-	linkedList, err := NewLinkedList[T]()
+func NewList[T any](values ...T) (List[T], error) {
+	l, err := newEmptyList[T]()
 	for _, value := range values {
-		if err = linkedList.Push(value); err != nil {
+		if err = l.Push(value); err != nil {
 			return List[T]{}, err
 		}
 	}
-	return linkedList, err
+	return l, err
 }

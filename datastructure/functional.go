@@ -9,9 +9,21 @@ import (
 	"distributed/internal"
 )
 
+const (
+	FILTEROPERR  = common.Error("filter operation failure")
+	MAPOPERR     = common.Error("map operation failure")
+	REDUCEOPERR  = common.Error("reduce operation failure")
+	COMPUTEOPERR = common.Error("compute operation failure")
+)
+
+//FIXME:
+// return more detailed errors instead of just err constant.
+// Maybe when debug is enabled print out the actual error object
+
 func Filter[T any](c common.Collection, f common.Filterer[T]) error {
 	filter := internal.Filter[T]{WithFilter: f}
 	if err := delayedEval(filter, c.Identity()); err != nil {
+		common.Log.Error("filter for group %s failed with %s", c.Identity(), err.Error())
 		return FILTEROPERR
 	}
 	return nil
@@ -20,6 +32,7 @@ func Filter[T any](c common.Collection, f common.Filterer[T]) error {
 func Map[T any, R any](c common.Collection, m common.Mapper[T, R]) error {
 	mapper := internal.Map[T, R]{WithMapper: m}
 	if err := delayedEval(mapper, c.Identity()); err != nil {
+		common.Log.Error("map for group %s failed with %s", c.Identity(), err.Error())
 		return MAPOPERR
 	}
 	return nil
@@ -32,7 +45,8 @@ func Reduce[T any, R any](c common.Collection, r common.Reducer[T, R], finalRedu
 	reduce := internal.Reduce[T, R]{WithReducer: r}
 
 	if workersResult, err = eagerEval(reduce, c.Identity()); err != nil {
-		return result, err
+		common.Log.Error("reduce for group %s failed with %s", c.Identity(), err.Error())
+		return result, REDUCEOPERR
 	}
 
 	switch len(workersResult) {
@@ -47,7 +61,8 @@ func Reduce[T any, R any](c common.Collection, r common.Reducer[T, R], finalRedu
 			if r, err = common.ToType[R](cr.Data); err == nil {
 				intermReduction = append(intermReduction, r)
 			} else {
-				return result, err
+				common.Log.Error("reduce for group %s failed with %s", c.Identity(), err.Error())
+				return result, REDUCEOPERR
 			}
 		}
 		result = finalReduct(intermReduction)
@@ -62,7 +77,8 @@ func Compute[T any](c common.Collection) ([]T, error) {
 	compute := internal.Compute{}
 
 	if computeResult, err = eagerEval(compute, c.Identity()); err != nil {
-		return []T{}, err
+		common.Log.Error("compute for group %s failed with %s", c.Identity(), err.Error())
+		return []T{}, COMPUTEOPERR
 	}
 
 	result := make([]T, 0)
@@ -72,7 +88,8 @@ func Compute[T any](c common.Collection) ([]T, error) {
 			if r, err = common.ToType[T](cr.Data); err == nil {
 				result = append(result, r)
 			} else {
-				return []T{}, err
+				common.Log.Error("compute for group %s failed with %s", c.Identity(), err.Error())
+				return []T{}, COMPUTEOPERR
 			}
 		}
 	}

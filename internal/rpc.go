@@ -45,6 +45,7 @@ func (rns *RpcNodeService) New(_ common.NONE, grpId *common.GRPID) error {
 		id = common.GenUUID()
 	}
 	*grpId = id
+	common.Log.Debug("new group with value %s created", id)
 	return nil
 }
 
@@ -99,6 +100,7 @@ func (rns *RpcNodeService) Insert(node RpcNode, _ *common.NONE) error {
 		}
 	}
 	rns.nodes[grpId] = append(rns.nodes[grpId], node)
+	common.Log.Debug("inserted Node for group %s with uuid %s", grpId, uuid)
 	return nil
 }
 
@@ -187,6 +189,7 @@ func (rns *RpcNodeService) Delayed(by FuncParam, _ *common.NONE) error {
 	} else {
 		rns.ops[grpId] = []FunctionalOp{by.Op}
 	}
+	common.Log.Debug("inserted delay op for group %s", grpId)
 	return nil
 }
 
@@ -207,6 +210,7 @@ func (rns *RpcNodeService) Immediate(by FuncParam, result *[]RpcNode) error {
 		}
 		// evaluate current operation and store results as bytes
 		*result = by.Op.Eval(currData)
+		common.Log.Debug("executing immediate op for group %s", grpId)
 		return err
 	}
 	return common.DoesNotExistGrpIdErr

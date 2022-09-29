@@ -22,7 +22,7 @@ func init() {
 
 func TestCompute(t *testing.T) {
 	values := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
-	l, _ := NewLinkedListWithValues(values...)
+	l, _ := NewList(values...)
 	if result, err := Compute[int](l); err == nil {
 		if len(result) != len(values) {
 			t.Fatalf("size check")
@@ -49,7 +49,7 @@ func (sumReducer) Reduce(n ...common.NodeLike[int]) int {
 
 func TestReduce(t *testing.T) {
 	values := []int{1, 2, 3, 4, 5}
-	l, _ := NewLinkedListWithValues(values...)
+	l, _ := NewList(values...)
 	finalReduction := func(in []int) int {
 		sum := 0
 		for _, i := range in {
@@ -75,7 +75,7 @@ func (v valueFilter) Filter(n common.NodeLike[int]) bool {
 
 func TestFilterCompute(t *testing.T) {
 	values := []int{1, 2, 3, 4, 5, 2, 7, 8, 9, 2}
-	l, _ := NewLinkedListWithValues(values...)
+	l, _ := NewList(values...)
 	if err := Filter[int](l, valueFilter{2}); err == nil {
 		result, err := Compute[int](l)
 		if err != nil {
@@ -106,7 +106,7 @@ func (m valueMapper) Map(n common.NodeLike[int]) common.Node[int] {
 
 func TestMapCompute(t *testing.T) {
 	values := []int{1, 2, 3, 4, 5, 2, 7, 8, 9, 2}
-	l, _ := NewLinkedListWithValues(values...)
+	l, _ := NewList(values...)
 	if err := Map[int, int](l, valueMapper{2}); err == nil {
 		result, err := Compute[int](l)
 		if err != nil {
