@@ -32,8 +32,13 @@ type RpcNode struct {
 // RpcNodeService : RPC service type
 // TODO: mutex and sync access ?
 type RpcNodeService struct {
-	nodes map[common.GRPID][]RpcNode
-	ops   map[common.GRPID][]FunctionalOp
+	Nodes map[common.GRPID][]RpcNode
+	Ops   map[common.GRPID][]FunctionalOp
+}
+
+// ServiceName implement common.ServiceProvider
+func (RpcNodeService) ServiceName() common.Service {
+	return "RpcNodeService"
 }
 
 // New returns an available Group ID on this worker
@@ -41,7 +46,7 @@ type RpcNodeService struct {
 // Group I D does not already exist on other workers
 func (rns *RpcNodeService) New(_ common.NONE, grpId *common.GRPID) error {
 	id := common.GenUUID()
-	for _, ok := rns.nodes[id]; ok; {
+	for _, ok := rns.Nodes[id]; ok; {
 		id = common.GenUUID()
 	}
 	*grpId = id
@@ -50,7 +55,7 @@ func (rns *RpcNodeService) New(_ common.NONE, grpId *common.GRPID) error {
 }
 
 func (rns RpcNodeService) GrpIdExist(grpId common.GRPID, exist *bool) error {
-	if _, ok := rns.nodes[grpId]; ok {
+	if _, ok := rns.Nodes[grpId]; ok {
 		*exist = true
 	}
 	return nil
@@ -65,7 +70,7 @@ func (rns RpcNodeService) UuidExist(node RpcNode, exist *bool) error {
 	}
 	grpId := node.GrpID
 	uuid := node.Uuid
-	if nodes, ok := rns.nodes[grpId]; ok {
+	if nodes, ok := rns.Nodes[grpId]; ok {
 		for _, node := range nodes {
 			if node.Uuid == uuid {
 				*exist = true
@@ -93,13 +98,13 @@ func (rns *RpcNodeService) Insert(node RpcNode, _ *common.NONE) error {
 		return common.ReqUuidErr
 	}
 	grpId, uuid := node.GrpID, node.Uuid
-	for index, currNode := range rns.nodes[grpId] {
+	for index, currNode := range rns.Nodes[grpId] {
 		if currNode.GrpID == grpId && currNode.Uuid == uuid {
-			rns.nodes[grpId][index] = node
+			rns.Nodes[grpId][index] = node
 			return nil
 		}
 	}
-	rns.nodes[grpId] = append(rns.nodes[grpId], node)
+	rns.Nodes[grpId] = append(rns.Nodes[grpId], node)
 	common.Log.Debug("inserted Node for group %s with uuid %s", grpId, uuid)
 	return nil
 }
@@ -119,13 +124,13 @@ func (rns *RpcNodeService) Delete(nodesToDel []RpcNode, _ *common.NONE) error {
 		return common.ReqGrpIdErr
 	}
 	updatedNodeList := make([]RpcNode, 0)
-	for _, node := range rns.nodes[grpId] {
+	for _, node := range rns.Nodes[grpId] {
 		if !found(node, nodesToDel) {
 			updatedNodeList = append(updatedNodeList, node)
 		}
 
 	}
-	rns.nodes[grpId] = updatedNodeList
+	rns.Nodes[grpId] = updatedNodeList
 	return nil
 }
 
@@ -147,7 +152,7 @@ func (rns RpcNodeService) Retrieve(criteria RpcNode, result *[]RpcNode) error {
 		return common.ReqGrpIdErr
 	}
 
-	rnodes, ok := rns.nodes[criteria.GrpID]
+	rnodes, ok := rns.Nodes[criteria.GrpID]
 	if !ok {
 		return common.DoesNotExistGrpIdErr
 	}
@@ -183,11 +188,11 @@ func (rns *RpcNodeService) Delayed(by FuncParam, _ *common.NONE) error {
 		return common.ReqGrpIdErr
 	}
 	grpId := by.GrpId
-	_, ok := rns.ops[grpId]
+	_, ok := rns.Ops[grpId]
 	if ok {
-		rns.ops[grpId] = append(rns.ops[grpId], by.Op)
+		rns.Ops[grpId] = append(rns.Ops[grpId], by.Op)
 	} else {
-		rns.ops[grpId] = []FunctionalOp{by.Op}
+		rns.Ops[grpId] = []FunctionalOp{by.Op}
 	}
 	common.Log.Debug("inserted delay op for group %s", grpId)
 	return nil
@@ -200,10 +205,10 @@ func (rns *RpcNodeService) Immediate(by FuncParam, result *[]RpcNode) error {
 	var validGrpId bool
 	var err error
 	if _ = rns.GrpIdExist(grpId, &validGrpId); validGrpId {
-		currData := rns.nodes[grpId]
-		// evaluate previously delayed ops if any
-		if ops, ok := rns.ops[grpId]; ok {
-			defer delete(rns.ops, grpId) // clear all stored ops once done
+		currData := rns.Nodes[grpId]
+		// evaluate previously delayed Ops if any
+		if ops, ok := rns.Ops[grpId]; ok {
+			defer delete(rns.Ops, grpId) // clear all stored Ops once done
 			for _, f := range ops {
 				currData = f.Eval(currData)
 			}

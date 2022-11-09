@@ -12,7 +12,11 @@ func TestMain(m *testing.M) {
 
 	ports := []int{8080, 8081, 8083}
 	for _, port := range ports {
-		if worker, err := internal.NewWorker(port); err == nil {
+		service := internal.RpcNodeService{
+			Nodes: make(map[common.GRPID][]internal.RpcNode, 0),
+			Ops:   make(map[common.GRPID][]internal.FunctionalOp, 0),
+		}
+		if worker, err := internal.NewWorker(service, port); err == nil {
 			common.RegisterWorker("localhost", port)
 			log.Printf("Test Worker Started on Port %d", port)
 			go worker.Start()

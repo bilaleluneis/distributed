@@ -17,13 +17,9 @@ type Worker struct {
 	listener net.Listener
 }
 
-func NewWorker(atPort int) (Worker, error) {
+func NewWorker[T common.ServiceProvider](service T, atPort int) (Worker, error) {
 	var err error
 	var worker Worker
-	service := RpcNodeService{
-		nodes: make(map[common.GRPID][]RpcNode, 0),
-		ops:   make(map[common.GRPID][]FunctionalOp, 0),
-	}
 	worker.handler = rpc.NewServer()
 	if err = worker.handler.Register(&service); err != nil {
 		return worker, common.RpcServiceRegErr

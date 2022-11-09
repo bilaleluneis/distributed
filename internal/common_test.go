@@ -34,7 +34,7 @@ func genTestNodes[T any](data ...T) (common.GRPID, error) {
 		}
 	}
 
-	// create nodes with Test data
+	// create Nodes with Test data
 	if err = worker.Invoke(NEW, common.NONE{}, &grpId); err != nil {
 		return common.EmptyGrpID, err
 	}

@@ -42,7 +42,11 @@ func Init(withWorkers ...Connection) {
 	if port, ok := isWorker(); ok {
 		var worker internal.Worker
 		var err error
-		if worker, err = internal.NewWorker(port); err != nil {
+		service := internal.RpcNodeService{
+			Nodes: make(map[common.GRPID][]internal.RpcNode, 0),
+			Ops:   make(map[common.GRPID][]internal.FunctionalOp, 0),
+		}
+		if worker, err = internal.NewWorker(service, port); err != nil {
 			log.Panicf("failed to create worker with error %s", err.Error())
 		}
 		worker.Start()

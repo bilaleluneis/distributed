@@ -21,6 +21,12 @@ const (
 	EmptyUUID  = UUID("")
 )
 
+// ServiceProvider will be used as constraint
+// for Service like types
+type ServiceProvider interface {
+	ServiceName() Service
+}
+
 type NodeLike[T any] interface {
 	GetData() T
 	GetGrpID() GRPID
