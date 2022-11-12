@@ -6,8 +6,11 @@ package research
 
 import (
 	"bytes"
+	"distributed/common"
+	"distributed/internal"
 	"encoding/gob"
 	"errors"
+	"testing"
 )
 
 /*
@@ -63,6 +66,16 @@ func fromNetwork[T any]() (T, error) {
 	var result T
 	err := gob.NewDecoder(&network).Decode(&result)
 	return result, err
+}
+
+func startTestWorker[S common.ServiceProvider](withService S, t *testing.T) {
+	var worker internal.Worker
+	var err error
+	if worker, err = internal.NewWorker(withService, 8080); err != nil {
+		t.Fatalf("worker failed to start:  %s", err.Error())
+	}
+	common.RegisterWorker("localhost", 8080)
+	go worker.Start()
 }
 
 // Constraints as Interfaces
