@@ -79,7 +79,7 @@ func TestFilter(t *testing.T) {
 	grpId, err = genTestNodes(fruitesAndVeg...)
 
 	// Test Filter
-	filter := Filter[string]{vegetableFilter{}}
+	filter := Filter[string]{WithFilter: vegetableFilter{}}
 	gob.Register(vegetableFilter{})
 	gob.Register(filter)
 	param := FuncParam{

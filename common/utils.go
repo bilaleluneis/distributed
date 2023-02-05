@@ -11,9 +11,10 @@ import (
 	"fmt"
 )
 
+// GenUUID TODO: do error checking and return error
 func GenUUID() UUID {
 	b := make([]byte, 16)
-	_, _ = rand.Read(b)
+	_, _ = rand.Read(b) //FIXME: error check
 	i1 := b[0:4]
 	i2 := b[4:6]
 	i3 := b[6:8]
